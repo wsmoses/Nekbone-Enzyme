@@ -2,9 +2,8 @@
 # Nek5000 build config file
 # (c) 2008,2009,2010 UCHICAGO ARGONNE, LLC
 
-# source path 
-#SOURCE_ROOT="$HOME/nekbone-3.0/src" 
-SOURCE_ROOT="../../src" 
+# source path
+SOURCE_ROOT="$HOME/Nekbone/src"
 
 # Fortran compiler
 F77="ftn"
@@ -12,7 +11,7 @@ F77="ftn"
 # C compiler
 CC="cc"
 
-# pre-processor symbol list 
+# pre-processor symbol list
 # (set PPLIST=? to get a list of available symbols)
 # NEKCOMM, NEKDLAY, BG, MGRID
 #PPLIST="?"
@@ -26,7 +25,7 @@ CC="cc"
 
 # auxilliary files to compile
 # NOTE: source files have to located in the same directory as makenek
-#       a makefile_usr.inc has to be provided containing the build rules 
+#       a makefile_usr.inc has to be provided containing the build rules
 #USR="foo.o"
 
 # linking flags
@@ -40,8 +39,8 @@ CC="cc"
 #OPT_FLAGS_MAG=""
 
 
-#set PGI OpenACC 
-#IFPGIACC="true" 
+#set PGI OpenACC
+#IFPGIACC="true"
 
 ###############################################################################
 # DONT'T TOUCH WHAT FOLLOWS !!!
