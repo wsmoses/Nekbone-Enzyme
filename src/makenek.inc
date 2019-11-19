@@ -1,14 +1,14 @@
 # This include file is used by the makenek script
-# to automatically create a makefile for Nek5000 
+# to automatically create a makefile for Nek5000
 # (c) 2008,2009,2010 UCHICAGO ARGONNE, LLC
 # ------------------------------------------------
 
 echo "makenek - automatic build tool for Nek5000"
 
 if [ "$PPLIST" == "?" ]; then
-  echo "available pre-processor symbols:" 
+  echo "available pre-processor symbols:"
   echo "  BG        enable Blue Gene optimizations (BG/L and BG/P)"
-  echo "  K10_MXM   use optimized MxM kernel for AMD Family 10h processors" 
+  echo "  K10_MXM   use optimized MxM kernel for AMD Family 10h processors"
   echo "  NEKCOMM  nekbone communication test"
   echo "  NEKDLAY  nekbone load imbalance simmulation"
   echo "  MGRID    turns on Multigrid precondition"
@@ -24,7 +24,7 @@ fi
 NOCOMPILE=0
 if [ "$2" == "-nocompile" ]; then
   NOCOMPILE=1
-fi 
+fi
 
 CASENAME=$1
 CASEDIR=`pwd`
@@ -114,9 +114,9 @@ cat > test_underscore.f << _ACEOF
         call byte_write
       end
 _ACEOF
-$F77 -c test_underscore.f 2>&1 >/dev/null 
+$F77 -c test_underscore.f 2>&1 >/dev/null
 nm test_underscore.o | grep byte_write_ 1>/dev/null
-if [ $? -eq 0 ] 
+if [ $? -eq 0 ]
 then
   UNDERSCORE=true
 fi
@@ -125,10 +125,10 @@ fi
 F77comp=$F77
 # mpi-wrappers?
 echo $F77comp | grep -i mp >/dev/null
-if [ $? -eq 0 ]; then   
-# trying to figure out which compiler we're using 
+if [ $? -eq 0 ]; then
+# trying to figure out which compiler we're using
   F77ok=0
-  F77comp_=`$F77 -showme 2>/dev/null 1>.tmp` 
+  F77comp_=`$F77 -showme 2>/dev/null 1>.tmp`
   F77comp=`cat .tmp | awk '{print $1}' | awk -F/ '{print $NF}'`
   if [ -f "`which $F77comp 2>/dev/null`" ]; then
     F77ok=1
@@ -154,7 +154,7 @@ fi
 case $F77comp in
   *pgf*)        P="-r8 -Mpreprocess"
                ;;
-  *gfortran*)   P="-fdefault-real-8 -x f77-cpp-input"
+  *gfortran*)   P="-fdefault-real-8 -x f77-cpp-input -fdefault-double-8"
                ;;
   *ifort*)      P="-r8 -fpconstant -fpp"
                ;;
@@ -212,20 +212,20 @@ fi
 
 if [ "$UNDERSCORE" == "true" ]; then
   PPLIST="${PPLIST} UNDERSCORE"
-fi 
+fi
 
 PPLIST="${PPLIST} GLOBAL_LONG_LONG"
 
 MXM_USER="mxm_std.o blas.o"
-echo $PPLIST | grep 'BG' >/dev/null 
+echo $PPLIST | grep 'BG' >/dev/null
 if [ $? -eq 0 ]; then
-   MXM_USER="mxm_std.o bg_aligned3.o bg_mxm44.o bg_mxm44_uneven.o bg_mxm3.o blas.o" 
+   MXM_USER="mxm_std.o bg_aligned3.o bg_mxm44.o bg_mxm44_uneven.o bg_mxm3.o blas.o"
    OPT_FLAGS_STD="-qarch=450 -qtune=450"
    OPT_FLAGS_MAG="-O5 -qarch=450d -qtune=450"
 fi
-echo $PPLIST | grep 'BLAS_MXM' >/dev/null 
+echo $PPLIST | grep 'BLAS_MXM' >/dev/null
 if [ $? -eq 0 ]; then
-   MXM_USER="mxm_std.o" 
+   MXM_USER="mxm_std.o"
 fi
 for i in $PPLIST
 do
@@ -243,7 +243,7 @@ done
 # set optimization flags
 L0="\$(G) -O0"
 L2="\$(G) -O2"
-L3="\$(G) -O3" 
+L3="\$(G) -O3"
 L4="\$(L3)"
 
 # user specified opt flags
@@ -251,7 +251,7 @@ if [ "$OPT_FLAGS_STD" != "" ]; then
   echo $OPT_FLAGS_STD | grep "\-O." 1>/dev/null
   if [ $? -eq 0 ]; then
     L2="\$(G) $OPT_FLAGS_STD"
-    L3="\$(G) $OPT_FLAGS_STD" 
+    L3="\$(G) $OPT_FLAGS_STD"
   else
     L2="\$(G) -O2 $OPT_FLAGS_STD"
     L3="\$(G) -O3 $OPT_FLAGS_STD"
@@ -266,7 +266,7 @@ if [ "$USR_LIB" != "" ]; then
     USR_LFLAGS="${USR_LFLAGS} ${USR_LIB}"
 fi
 
-# tweak makefile template 
+# tweak makefile template
 echo "generating makefile ..."
 rm -rf makefile 2>/dev/null
 
@@ -306,10 +306,10 @@ if [ -f .makefile ]; then
   sed -e "1i\\
 ### makefile automatically created by makenek `date +"%m/%d/%Y %T"` ###" \
 -e "s:^CASEDIR[ ]*=.*:CASEDIR\:=${CASEDIR}:" \
--e "s:^CASENAME[ ]*=.*:CASENAME\:=${CASENAME}:" .makefile > makefile 
+-e "s:^CASENAME[ ]*=.*:CASENAME\:=${CASENAME}:" .makefile > makefile
 else
   echo "ERROR: Nek Makefile could not be created!"
-  exit 1 
+  exit 1
 fi
 \rm .makefile 2>/dev/null
 
@@ -323,4 +323,4 @@ fi
 
 if [ $NOCOMPILE -eq 1 ]; then
   exit 0
-fi 
+fi
