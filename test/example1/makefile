@@ -1,8 +1,8 @@
-### makefile automatically created by makenek 10/21/2014 06:51:13 ###
+### makefile automatically created by makenek 01/20/2020 13:08:44 ###
 BINNAME=nekbone
 CASENAME:=
-CASEDIR:=/lus/scratch/p01633/toBrent/nekbone-3.1/test/example1
-S:=/lus/scratch/p01633/toBrent/nekbone-3.1/src
+CASEDIR:=/home/martinkarp/Nekbone/test/example1
+S:=/home/martinkarp/Nekbone/src
 J:=$S/jl
 OPT_INCDIR:=./
 OBJDIR=obj
@@ -10,9 +10,9 @@ IFMPI:=true
 IFNEKCOMM:=
 IFNEKDLAY:=
 IFMGRID:=
-F77:=ftn
-CC:=cc
-P:=-ra -s real64 -eZ -em -Rc
+F77:=mpif90
+CC:=mpicc
+P:=-fdefault-real-8 -x f77-cpp-input -fdefault-double-8
 PPPO=
 PPS= PTRSIZE8 MPI LONGINT8 UNDERSCORE GLOBAL_LONG_LONG
 G:=
@@ -50,6 +50,10 @@ endif
 ################################################################################
 # MXM 
 MXM=mxm_std.o blas.o
+
+################################################################################
+# CUDA
+BONE += ax_cuda.o 
 
 # JL Routines ###################################################################
 JO  = jl_
@@ -118,7 +122,7 @@ ifeq ($(IFMPI),false)
 endif
 
 clean:
-	rm -rf ./obj ${BINNAME}
+	rm -rf $(OBJDIR) ${BINNAME}
 
 $(NOBJS_Fbon) : SIZE
 # CORE      ############################################################################
@@ -161,3 +165,9 @@ $(OBJDIR)/$(JO)fcrystal.o        :$(J)/fcrystal.c;        $(CC) -c $(cFL2) $(JL)
 $(OBJDIR)/$(JO)sleep.o		:$(J)/sleep.c;		$(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs.o              :$(J)/gs.c;              $(CC) -c $(cFL2) $(JL) $< -o $@
 $(OBJDIR)/$(JO)gs_local.o        :$(J)/gs_local.c;        $(CC) -c $(cFL2) $(JL) $< -o $@
+
+# OPENACC #########################################################################################
+$(OBJDIR)/ax_acc.o  :$S/ax_acc.f;   $(F77) -c $(FL3) $< -o $@
+
+# CUDA ############################################################################################
+$(OBJDIR)/ax_cuda.o   :$S/ax_cuda.f;  $(F77) -c $(FL3) $< -o $@

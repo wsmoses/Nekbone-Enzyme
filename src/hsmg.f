@@ -9,22 +9,18 @@ c-----------------------------------------------------------------------
 c     call geom_reset(1)  ! Recompute g1m1 etc. with deformed only
 
       mg_fld = 1
-      call h1mg_index_0      ! set indices to 0 
+      call h1mg_index_0      ! set indices to 0
 
       call h1mg_setup_mg_nx
       call h1mg_setup_semhat ! SEM hat matrices for each level
       call h1mg_setup_intp   ! Interpolation operators
       call h1mg_setup_dssum  ! set direct stiffness summation handles
-      call h1mg_setup_wtmask ! set restriction weight matrices 
+      call h1mg_setup_wtmask ! set restriction weight matrices
 
       call h1mg_setup_fdm    ! set up fast diagonalization method
-
       call h1mg_setup_schwarz_wt
-
       l=mg_h1_lmax
       call mg_set_msk (p_msk,l)
-
-
       return
       end
 c----------------------------------------------------------------------
@@ -38,7 +34,7 @@ c----------------------------------------------------------------------
       call izero( mg_fast_s_index       , n )
       call izero( mg_fast_d_index       , n )
       call izero( mg_schwarz_wt_index   , n )
-      
+
       return
       end
 c----------------------------------------------------------------------
@@ -92,7 +88,7 @@ c     if (nid.eq.0) write(*,*) 'h1_mg_nz:',(mg_nz(i),i=1,mg_h1_lmax)
      $                  *(mg_nz(l)+1)*nelt
       enddo
       enddo
-      
+
       return
       end
 c----------------------------------------------------------------------
@@ -156,7 +152,7 @@ c----------------------------------------------------------------------
       include 'HSMG'
 
       integer nx
-      
+
 
       do l=1,mg_h1_lmax  ! set up direct stiffness summation for each level
          nx=mg_nh(l)
@@ -196,7 +192,7 @@ c     basically just the inverse counting matrix
       integer nx,ny,nz,l
       real w(nx,ny,nz,nelt)
       real wt(nx,nz,2,ndim,nelt)
-      
+
       integer ie
       !init border nodes to 1
       call rzero(w,nx*ny*nz*nelt)
@@ -222,8 +218,14 @@ c     basically just the inverse counting matrix
          enddo
       enddo
 
+#ifdef _OPENACC
+!$ACC DATA CREATE(w)
+#endif
       call h1mg_dssum(w,l)
 
+#ifdef _OPENACC
+!$ACC END DATA
+#endif
       !invert the count w to get the weight wt
       do ie=1,nelt
          do k=1,nz
@@ -245,14 +247,14 @@ c     basically just the inverse counting matrix
          enddo
          enddo
       enddo
-      
+
       return
       end
 c----------------------------------------------------------------------
       subroutine h1mg_setup_fdm()
       include 'SIZE'
       include 'HSMG'
-      
+
       integer l,i,j,nl
 
       i = mg_fast_s_index(mg_h1_lmax,mg_fld-1)
@@ -294,17 +296,17 @@ c----------------------------------------------------------------------
 
       common /ctmpf/  lr(2*lx1+4),ls(2*lx1+4),lt(2*lx1+4)
       real lr ,ls ,lt
- 
+
       real llr(lelt),lls(lelt),llt(lelt)
      $   , lmr(lelt),lms(lelt),lmt(lelt)
      $   , lrr(lelt),lrs(lelt),lrt(lelt)
       integer lbr,rbr,lbs,rbs,lbt,rbt
-      
+
       real l(nx1,ny1,nz1,nelt)
       integer i,j,k
       integer ie,il,nr,ns,nt
       real eps,diag
-      
+
 c     zero if on edge, lmr of neigh ow, only should be done once and saved?
       do ie = 1,nelt
 c         lmr(ie) = 1.0/nelx  !even element distribution.
@@ -313,7 +315,7 @@ c         lmt(ie) = 1.0/nelz
           lmr(ie) = 2.0  !even element distribution.
           lms(ie) = 2.0  !each element is (-1,1) in width
           lmt(ie) = 2.0
-        
+
 
           l(1,  2,  2,ie)=lmr(ie)
           l(nx1,2,  2,ie)=lmr(ie)
@@ -322,7 +324,15 @@ c         lmt(ie) = 1.0/nelz
           l(2,  2,  1,ie)=lmt(ie)
           l(2,  2,nz1,ie)=lmt(ie)
       enddo
+#ifdef _OPENACC
+!$ACC  DATA CREATE(l)
+!$ACC UPDATE DEVICE(l)
+#endif
       call dssum(l)
+#ifdef _OPENACC
+!$ACC UPDATE SELF(l)
+!$ACC END DATA
+#endif
       do ie = 1,nelt
          llr(ie) = l(1,  2,  2,ie)-lmr(ie)
          lrr(ie) = l(nx1,2,  2,ie)-lmr(ie)
@@ -336,10 +346,10 @@ c          write(6,*) lls(ie),lms(ie),lrs(ie)
 c          write(6,*) llt(ie),lmt(ie),lrt(ie)
 c          write(6,*)
       enddo
- 
+
       do ie=1,nelt
          call get_bcs(lbr,rbr,lbs,rbs,lbt,rbt,ie)
-         
+
 
          nr=nl
          ns=nl
@@ -380,22 +390,22 @@ c----------------------------------------------------------------------
       integer nl,lbc,rbc,n
       real s(nl,nl,2),lam(nl),ll,lm,lr
       real ah(0:n,0:n),bh(0:n)
-      
+
       include 'SIZE'
       parameter(lxm=lx1+2)
       common /ctmp0/ b(2*lxm*lxm),w(2*lxm*lxm)
-      
+
       call h1mg_setup_fast1d_a(s,lbc,rbc,ll,lm,lr,ah,n)
       call h1mg_setup_fast1d_b(b,lbc,rbc,ll,lm,lr,bh,n)
-      
+
       call generalev(s,b,lam,nl,w)
 
-      if(lbc.gt.0) call row_zero(s,nl,nl,1)   
-      if(lbc.eq.1) call row_zero(s,nl,nl,2)   
+      if(lbc.gt.0) call row_zero(s,nl,nl,1)
+      if(lbc.eq.1) call row_zero(s,nl,nl,2)
 
-      if(rbc.gt.0) call row_zero(s,nl,nl,nl)  
+      if(rbc.gt.0) call row_zero(s,nl,nl,nl)
       if(rbc.eq.1) call row_zero(s,nl,nl,nl-1)
-      
+
       call transpose(s(1,1,2),nl,s,nl)
       return
       end
@@ -404,15 +414,15 @@ c----------------------------------------------------------------------
       integer lbc,rbc,n
       real a(0:n+2,0:n+2),ll,lm,lr
       real ah(0:n,0:n)
-      
+
       real fac
       integer i,j,i0,i1
 
       i0=0
-      if(lbc.eq.1) i0=1    
-      i1=n                
-      if(rbc.eq.1) i1=n-1 
-      
+      if(lbc.eq.1) i0=1
+      i1=n
+      if(rbc.eq.1) i1=n-1
+
       call rzero(a,(n+3)*(n+3))
       fac = 2.0/lm
       a(1,1)=1.0
@@ -448,14 +458,14 @@ c----------------------------------------------------------------------
       integer lbc,rbc,n
       real b(0:n+2,0:n+2),ll,lm,lr
       real bh(0:n)
-      
+
       real fac
       integer i,j,i0,i1
       i0=0
-      if(lbc.eq.1) i0=1   
-      i1=n                
-      if(rbc.eq.1) i1=n-1 
-      
+      if(lbc.eq.1) i0=1
+      i1=n
+      if(rbc.eq.1) i1=n-1
+
       call rzero(b,(n+3)*(n+3))
       fac = 0.5*lm
       b(1,1)=1.0
@@ -490,13 +500,13 @@ c
 c
       include 'SIZE'
       include 'PARALLEL'
- 
+
       real a(n,n),b(n,n),lam(n),w(n,n)
       real aa(100),bb(100)
- 
+
       parameter (lbw=4*lx1*ly1*lz1*lelt)
       common /bigw/ bw(lbw)
- 
+
       lw = n*n
 
       call copy(aa,a,100)
@@ -506,7 +516,7 @@ c
       else
          call ssygv(1,'V','U',n,a,n,b,n,lam,bw,lbw,info)
       endif
- 
+
       if (info.ne.0) then
          if (nid.eq.0) then
             call outmat2(aa ,n,n,n,'aa  ')
@@ -514,12 +524,12 @@ c
             call outmat2(a  ,n,n,n,'Aeig')
             call outmat2(lam,1,n,n,'Deig')
          endif
- 
+
          ninf = n-info
          write(6,*) 'Error in generalev, info=',info,n,ninf
          call exitt0
       endif
- 
+
       return
       end
 c-----------------------------------------------------------------------
@@ -561,7 +571,7 @@ c     based on Dirichlet boundary conditions set on all 6faces
       if(mod(iq,nely).eq.0)              rbs=1
 
       if(mod(ir,nelz).eq.1.or.nelz.eq.1) lbt=1
-      if(mod(ir,nelz).eq.0)              rbt=1 
+      if(mod(ir,nelz).eq.0)              rbt=1
 
 c     write(6,1) ngl, lbr,rbr,lbs,rbs,lbt,rbt
 c 1   format(i3,' element',6i3)
@@ -573,7 +583,7 @@ c-----------------------------------------------------------------------
       subroutine h1mg_setup_schwarz_wt
       include 'SIZE'
       include 'HSMG'
-      
+
       integer l,i,nl,nlz
 
       i = mg_schwarz_wt_index(mg_h1_lmax,mg_fld-1)
@@ -633,9 +643,13 @@ c     Sum overlap region (border excluded)
       call h1mg_extrude(mg_work(i),2,one,mg_work(i),0,one,enx,eny,enz)
 
       call h1mg_schwarz_toreg3d(mg_work,mg_work(i),mg_nh(l))
-
+#ifdef _OPENACC
+!$ACC DATA CREATE(mg_work)
+#endif
       call h1mg_dssum(mg_work,l)                           ! sum border nodes
-
+#ifdef _OPENACC
+!$ACC END DATA
+#endif
 
       nx = mg_nh(l)
       ny = mg_nh(l)
@@ -660,7 +674,7 @@ c----------------------------------------------------------------------
 
       integer ie,i,j,k
 
-      
+
       do k=1,n
       do j=1,n
          wt(j,k,1,1,ie)=1.0/work(1,j,k)
@@ -695,12 +709,12 @@ c----------------------------------------------------------------------
       integer n
       real wt(n,n,4,3,nelt)
       real work(n,n,n)
-      
+
       integer ie,i,j,k
       integer lbr,rbr,lbs,rbs,lbt,rbt
 
-      logical ifsqrt 
- 
+      logical ifsqrt
+
       ifsqrt = .true.
       ifsqrt = .false.
 
@@ -731,7 +745,7 @@ c----------------------------------------------------------------------
          enddo
 
          call get_bcs(lbr,rbr,lbs,rbs,lbt,rbt,ie)
-         
+
          if(lbr.eq.0) then
             do k=1,n
             do j=1,n
@@ -861,7 +875,7 @@ c----------------------------------------------------------------------
 c     changed by Jing
       common /mymask/cmask(-1:lx1*ly1*lz1*lelt)
       real cmask
-      
+
       integer e,count,ptr
 
       zero = 0
@@ -897,7 +911,7 @@ c
                nm    = nm   +1
                count = count+1
                ptr   = ptr  +1
-               mask(ptr) = i + nxyz*(e-1)   ! where I mask on element e 
+               mask(ptr) = i + nxyz*(e-1)   ! where I mask on element e
             endif
          enddo
 
@@ -918,10 +932,17 @@ c----------------------------------------------------------------------
       subroutine h1mg_dssum(u,l)
       include 'SIZE'
       include 'HSMG'
-
+#ifdef _OPENACC
+!$ACC DATA PRESENT(u)
+!$ACC UPDATE DEVICE(u)
+#endif
       call adelay
       call gs_op(mg_gsh_handle(l,mg_fld),u,1,1,0)
 
+#ifdef _OPENACC
+!$ACC UPDATE SELF(u)
+!$ACC END DATA
+#endif
       return
       end
 c----------------------------------------------------------------------
@@ -970,11 +991,11 @@ c     Assumes that preprocessing has been completed via h1mg_setup()
       include 'SIZE'
       include 'HSMG'       ! Same array space as HSMG
       include 'TOTAL'
-      
+
       parameter (lt=lx1*ly1*lz1*lelt)
       common /scrmg/ e(2*lt),w(lt),r(lt)
       integer p_msk
-
+!$ACC DATA CREATE(mg_work,e,r,w)
 
       nel   = nelt
 
@@ -985,9 +1006,8 @@ c     Assumes that preprocessing has been completed via h1mg_setup()
       l     = mg_h1_lmax
       n     = mg_h1_n(l,mg_fld)
       is    = 1                                       ! solve index
-
+   !Schwarz
       call h1mg_schwarz(z,rhs,sigma,l)                ! z := sigma W M       rhs
-                                                      !               Schwarz
       call copy(r,rhs,n)                              ! r  := rhs
 
       do l = mg_h1_lmax-1,2,-1                        ! DOWNWARD Leg of V-cycle
@@ -1000,7 +1020,7 @@ c     Assumes that preprocessing has been completed via h1mg_setup()
          call h1mg_schwarz(e(is),r,sigma,l)           ! e := sigma W M       r
                                                       !  l            Schwarz l
       enddo
-      
+
       is = is+n
                                                       !         T
       call h1mg_rstr(r,1,.false.)                     ! r  :=  J  r
@@ -1033,7 +1053,7 @@ c     call exitt
       do i = 1,n                                      !            l-1
          z(i) = z(i) + w(i)                           ! z := z + w
       enddo
-
+!$ACC END DATA
       return
       end
 c-----------------------------------------------------------------------
@@ -1076,7 +1096,7 @@ c-----------------------------------------------------------------------
       eny=mg_nh(l)+2
       enz=mg_nh(l)+2
       i = enx*eny*enz*nelt+1
- 
+
 c     exchange interior nodes
       call h1mg_extrude(mg_work,0,zero,mg_work,2,one,enx,eny,enz)
       call h1mg_schwarz_dssum(mg_work,l)
@@ -1093,7 +1113,7 @@ c     Sum overlap region (border excluded)
       call h1mg_schwarz_toreg3d(e,mg_work(i),mg_nh(l))
 
       call h1mg_dssum(e,l)                           ! sum border nodes
-      call h1mg_mask (e,mg_imask(pm),nelt) ! apply mask 
+      call h1mg_mask (e,mg_imask(pm),nelt) ! apply mask
 
       return
       end
@@ -1102,7 +1122,7 @@ c-----------------------------------------------------------------------
       include 'SIZE'
       include 'INPUT'
       include 'HSMG'
-      
+
       call h1mg_schwarz_wt3d2(
      $    e,mg_schwarz_wt(mg_schwarz_wt_index(l,mg_fld)),mg_nh(l))
       return
@@ -1113,7 +1133,7 @@ c-----------------------------------------------------------------------
       integer n
       real e(n,n,n,nelt)
       real wt(n,n,4,3,nelt)
-      
+
       integer ie,i,j,k
 
       do ie=1,nelt
@@ -1150,7 +1170,7 @@ c-----------------------------------------------------------------------
       integer n
       real e(n,n,n,nelt)
       real wt(n,n,4,3,nelt)
-      
+
       integer ie,i,j,k
       do ie=1,nelt
          do k=1,n
@@ -1187,7 +1207,7 @@ c-----------------------------------------------------------------------
       real    w   (1)
       integer mask(1)        ! Pointer to Dirichlet BCs
       integer e
-      
+
       do e=1,nel
          im = mask(e)
          call mg_mask_e(w,mask(im)) ! Zero out Dirichlet conditions
@@ -1213,7 +1233,7 @@ c     strip off ghost cell
       include 'SIZE'
       integer n
       real a(0:n+1,0:n+1,0:n+1,nelt),b(n,n,n,nelt)
-      
+
       integer i,j,k,ie
       do ie=1,nelt
       do k=1,n
@@ -1232,7 +1252,7 @@ c     border nodes (ghost cell = 0)
       include 'SIZE'
       integer n
       real a(0:n+1,0:n+1,0:n+1,nelt),b(n,n,n,nelt)
-      
+
       integer i,j,k,ie
       call rzero(a,(n+2)*(n+2)*(n+2)*nelt)
       do ie=1,nelt
@@ -1252,11 +1272,11 @@ c-----------------------------------------------------------------------
       integer l1,l2,nx,ny,nz
       real arr1(nx,ny,nz,nelt),arr2(nx,ny,nz,nelt)
       real f1,f2
-      
+
       integer i,j,k,ie,i0,i1
       i0=2
       i1=nx-1
-      
+
       do ie=1,nelt
          do k=i0,i1
          do j=i0,i1
@@ -1304,7 +1324,7 @@ c     clobbers r
       real r(nl**ndim,nelt)
       real s(nl*nl,2,ndim,nelt)
       real d(nl**ndim,nelt)
-      
+
       integer ie,nn,i
       nn=nl**ndim
 
@@ -1365,7 +1385,7 @@ c     u = wt .* u
       integer nx,ny,nz
       real u(nx,ny,nz,nelt)
       real wt(nx,nz,2,ndim,nelt)
-      
+
       integer e
 
       do ie=1,nelt
@@ -1393,7 +1413,7 @@ c     u = wt .* u
 c-----------------------------------------------------------------------
       subroutine h1mg_tnsr1(v,nv,nu,A,At)
 c
-c     v = [A (x) A (x) A] u 
+c     v = [A (x) A (x) A] u
 c
       integer nv,nu
       real v(1),A(1),At(1)
@@ -1448,7 +1468,7 @@ c-----------------------------------------------------------------------
 c-----------------------------------------------------------------------
 c     computes
 c     v = [A (x) A] u      or
-c     v = [A (x) A (x) A] u 
+c     v = [A (x) A (x) A] u
       subroutine h1mg_tnsr(v,nv,u,nu,A,At)
       integer nv,nu
       real v(1),u(1),A(1),At(1)
@@ -1459,7 +1479,7 @@ c     v = [A (x) A (x) A] u
       end
 c-------------------------------------------------------T--------------
 c     computes
-c              
+c
 c     v = [C (x) B (x) A] u
       subroutine h1mg_tnsr3d(v,nv,u,nu,A,Bt,Ct)
       integer nv,nu
@@ -1496,3 +1516,26 @@ c   1 format(i3,1x,a4,16f6.2)
       end
 c-----------------------------------------------------------------------
 
+c-----------------------------------------------------------------------
+
+#ifdef _OPENACC
+      subroutine h1mg_setup_acc()
+      print *, 'ey'
+      call h1mg_setup
+      print *, 'ey'
+      return
+      end
+c----------------------------------------------------------------------
+      subroutine h1mg_solve_acc(z,rhs,nn)  !  Solve preconditioner: Mz=rhs
+      real z(nn),rhs(nn)
+!$ACC DATA PRESENT(z,rhs)
+!$ACC UPDATE SELF(z,rhs)
+
+!      call copy(z,rhs,nn)
+      call h1mg_solve(z,rhs,nn)
+!$ACC UPDATE DEVICE(z,rhs)
+!$ACC END DATA
+      return
+      end
+c-----------------------------------------------------------------------
+#endif

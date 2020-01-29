@@ -15,7 +15,7 @@ c-----------------------------------------------------------------------
 
       real g(6,lt)
       real mfloplist(1024), avmflop
-      integer icount  
+      integer icount
 
       logical ifbrick
       integer iel0,ielN,ielD   ! element range per proc.
@@ -33,7 +33,7 @@ c-----------------------------------------------------------------------
 
       common /nsmpi_acc/ ug(lt)
       real ug
-#endif 
+#endif
 
       call iniproc(mpi_comm_world)    ! has nekmpi common block
       call init_delay
@@ -42,7 +42,7 @@ c-----------------------------------------------------------------------
      $                               npx,npy,npz,mx,my,mz)
 
 c     GET PLATFORM CHARACTERISTICS
-c     iverbose = 1
+c      iverbose = 1
 c     call platform_timer(iverbose)   ! iverbose=0 or 1
 
       icount = 0
@@ -59,26 +59,23 @@ c     SET UP and RUN NEKBONE
          call init_dim
          do nelt=iel0,ielN,ielD
            call init_mesh(ifbrick,cmask,npx,npy,npz,mx,my,mz)
-#ifdef GPUDIRECT
            call proxy_setupds     (gsh,nx1) ! Has nekmpi common block
-#else
-           call proxy_setupds_acc     (gsh,nx1) ! Has nekmpi common block
-!$ACC UPDATE DEVICE(ids_lgl1,ids_lgl2,ids_ptr)
-#endif
 
            call set_multiplicity   (c)       ! Inverse of counting matrix
 
-           call proxy_setup(ah,bh,ch,dh,zh,wh,g) 
-           call h1mg_setup
+           call proxy_setup(ah,bh,ch,dh,zh,wh,g)
+           call h1mg_setup_acc
 !$ACC UPDATE DEVICE(g,dxm1,dxtm1)
            niter = 100
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
-!!!$ACC UPDATE HOST(f)
+
+!$ACC UPDATE DEVICE(f)
+
+           print *, f(n/10)
 
            if(nid.eq.0) write(6,*)
-
            call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 
            call nekgsync()
@@ -88,14 +85,14 @@ c     SET UP and RUN NEKBONE
            call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
-           
+
            icount = icount + 1
            mfloplist(icount) = mflops*np
          enddo
       enddo
 !$ACC END DATA
 
-#else 
+#else
       do nx1=nx0,nxN,nxD
          call init_dim
          do nelt=iel0,ielN,ielD
@@ -103,14 +100,14 @@ c     SET UP and RUN NEKBONE
            call proxy_setupds    (gsh,nx1) ! Has nekmpi common block
            call set_multiplicity (c)       ! Inverse of counting matrix
 
-           call proxy_setup(ah,bh,ch,dh,zh,wh,g) 
+           call proxy_setup(ah,bh,ch,dh,zh,wh,g)
+           print *, 'lel'
            call h1mg_setup
-
            niter = 100
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
-
+           print *, f(n/10)
            if(nid.eq.0) write(6,*)
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 
@@ -121,7 +118,7 @@ c     SET UP and RUN NEKBONE
            call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
-           
+
            icount = icount + 1
            mfloplist(icount) = mflops*np
          enddo
@@ -148,8 +145,7 @@ c     call xfer(np,cr_h)
 c--------------------------------------------------------------
       subroutine set_f(f,c,n)
       real f(n),c(n)
-
-c     act as random number generator 
+c     act as random number generator
       do i=1,n
 c        arg  = 1.e9*(i*i) ! trouble  w/ certain compilers
          arg  = (i*i)
@@ -157,17 +153,17 @@ c        arg  = 1.e9*(i*i) ! trouble  w/ certain compilers
          f(i) = sin(arg)
       enddo
 
-#ifdef GPUDIRECT
+#ifdef _OPENACC
 !$acc update device(f)
 #endif
-
+      print *, f(n/10)
       call dssum(f)
-
-#ifdef GPUDIRECT
+      print *, f(n/10)
+#ifdef _OPENACC
 !$acc update host(f)
 #endif
       call col2 (f,c,n)
-
+      print *, f(n/10)
       return
       end
 c-----------------------------------------------------------------------
@@ -176,10 +172,10 @@ c-----------------------------------------------------------------------
 C     Transfer array dimensions to common
 
       include 'SIZE'
- 
+
       ny1=nx1
       nz1=nx1
- 
+
       ndim=ldim
 
       return
@@ -191,7 +187,7 @@ c-----------------------------------------------------------------------
       real cmask(-1:nx1*ny1*nz1*nelt)
       logical ifbrick
       integer e,eg,offs,npx,npy,npz,mx,my,mz
- 
+
 c     Trigger reset of mask
       cmask(-1) = 1.0
 
@@ -208,7 +204,7 @@ c     Trigger reset of mask
          my=1
          mz=1
 
-         if(nid.eq.0) then 
+         if(nid.eq.0) then
            write(6,*)
            write(6,*) 'Processor Distribution:  npx,npy,npz=',npx,
      $                npy,npz
@@ -217,27 +213,27 @@ c     Trigger reset of mask
            write(6,*) 'Local Element Distribution: mx,my,mz=',mx,
      $                my,mz
          endif
-   
+
          do e=1,nelt
             eg = e + nid*nelt
             lglel(e) = eg
          enddo
-      else              ! A 3-D block of elements 
+      else              ! A 3-D block of elements
          !xyz distribution of total proc if user-provided isn't valid
          if(npx*npy*npz.ne.np) then
-            call cubic(npx,npy,npz,np) 
+            call cubic(npx,npy,npz,np)
          endif
 
          !xyz distribution of total NELT if user-provided isn't valid
          if(mx*my*mz.ne.nelt)  then
-            call cubic(mx,my,mz,nelt) 
+            call cubic(mx,my,mz,nelt)
          endif
-      
+
          nelx = mx*npx
-         nely = my*npy 
+         nely = my*npy
          nelz = mz*npz
 
-         if(nid.eq.0) then 
+         if(nid.eq.0) then
            write(6,*)
            write(6,*) 'Processor Distribution:  npx,npy,npz=',npx,
      $                npy,npz
@@ -248,7 +244,7 @@ c     Trigger reset of mask
          endif
 
          e = 1
-         offs = (mod(nid,npx)*mx) + npx*(my*mx)*(mod(nid/npx,npy)) 
+         offs = (mod(nid,npx)*mx) + npx*(my*mx)*(mod(nid/npx,npy))
      $       + (npx*npy)*(mx*my*mz)*(nid/(npx*npy))
          do k = 0,mz-1
          do j = 0,my-1
@@ -348,7 +344,7 @@ c-----------------------------------------------------------------------
       include 'TOTAL'
 
 !      real c(1)
-      
+
       real c(lx1*ly1*lz1*lelt)
 
       n = nx1*ny1*nz1*nelt
@@ -356,13 +352,13 @@ c-----------------------------------------------------------------------
       call rone(c,n)
       call adelay
 
-#ifdef GPUDIRECT
+#ifdef _OPENACC
 !$ACC UPDATE DEVICE(C)
 #endif
 
       call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
 
-#ifdef GPUDIRECT
+#ifdef _OPENACC
 !$ACC UPDATE HOST(C)
 #endif
 
@@ -492,7 +488,7 @@ c----------------------------------------------------------------------
       integer iel0,ielN,ielD,nx0,nxN,nxD,npx,npy,npz,mx,my,mz
 
       !open .rea
-      ifbrick = .false.  
+      ifbrick = .false.
       ifmgrid = .false.  !initialize to false
       npx=0
       npy=0
@@ -502,12 +498,12 @@ c----------------------------------------------------------------------
       mz =0
 
       if(nid.eq.0) then
-         open(unit=9,file='data.rea',status='old') 
+         open(unit=9,file='data.rea',status='old')
          read(9,*,err=100) ifbrick
          read(9,*,err=100) iel0,ielN,ielD
          read(9,*,err=100) nx0,nxN,nxD
          read(9,*,err=100,iostat=ii) npx,npy,npz !optional
-         read(9,*,err=100,iostat=ii) mx,my,mz    !optional 
+         read(9,*,err=100,iostat=ii) mx,my,mz    !optional
          close(9)
       endif
       call bcast(ifbrick,4)
@@ -554,16 +550,16 @@ c----------------------------------------------------------------------
   210 continue
       write(6,*) "ERROR data.rea : ielN>lelt or nxN>lx1(SIZE) :: ABORT"
       call exitt0
-  
+
   220 continue
       write(6,*) "WARNING data.rea : STRIDE   nxD>nxN or ielD>ielN !!!"
-  
+
   230 continue
       write(6,*) "ERROR data.rea nx0 must be greater than or equal to 4"
      $          ," ...setting nx0=4"
       nx0=4
-  
-  
+
+
       return
       end
 c-----------------------------------------------------------------------

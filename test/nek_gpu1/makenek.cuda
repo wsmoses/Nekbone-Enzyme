@@ -7,7 +7,7 @@
 SOURCE_ROOT="../../src"
 
 # Fortran compiler
-F77="mpif90"
+F77="mpif77"
 
 # C compiler
 CC="mpicc"
@@ -22,7 +22,7 @@ CC="mpicc"
 # -----------------
 
 # enable MPI (default true)
-#IFMPI="false"
+IFMPI="true"
 
 # auxilliary files to compile
 # NOTE: source files have to located in the same directory as makenek

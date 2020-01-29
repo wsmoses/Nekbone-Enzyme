@@ -12,9 +12,9 @@ c     Input:   c - inverse of the counting matrix
 c
 c     Work arrays:   r,w,p,z  - vectors of length n
 c
-c     User-provided ax(w,z,n) returns  w := Az,  
+c     User-provided ax(w,z,n) returns  w := Az,
 c
-c     User-provided solveM(z,r,n) ) returns  z := M^-1 r,  
+c     User-provided solveM(z,r,n) ) returns  z := M^-1 r,
 c
 
       common /mymask/cmask(-1:lx1*ly1*lz1*lelt)
@@ -34,7 +34,6 @@ c     set machine tolerances
       if (one+eps .eq. one) eps = 1.e-7
 
       rtz1=1.0
-
       call rzero(x,n)
       call copy (r,f,n)
       call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
@@ -44,10 +43,10 @@ c     set machine tolerances
       if (nid.eq.0)  write(6,6) iter,rnorm
 
       miter = niter
-c     call tester(z,r,n)  
+c     call tester(z,r,n)
       do iter=1,miter
-         call solveM(z,r,n) ! preconditioner here
 
+         call solveM(z,r,n) ! preconditioner here
          rtz2=rtz1                                                       ! OPS
          rtz1=glsc3(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
 
@@ -66,7 +65,8 @@ c     call tester(z,r,n)
          if (iter.eq.1) rlim2 = rtr*eps**2
          if (iter.eq.1) rtr0  = rtr
          rnorm = sqrt(rtr)
-c        if (nid.eq.0.and.mod(iter,100).eq.0) 
+         !$ACC UPDATE SELF(r,z)
+c        if (nid.eq.0.and.mod(iter,100).eq.0)
 c     $   write(6,6) iter,rnorm,alpha,beta,pap
 
     6    format('cg:',i4,1p4e12.4)
@@ -89,7 +89,6 @@ c-----------------------------------------------------------------------
 
       nn = n
       call h1mg_solve(z,r,nn)
-
       return
       end
 c-----------------------------------------------------------------------
@@ -110,7 +109,7 @@ c-----------------------------------------------------------------------
       do e=1,nelt                                ! ~
          call ax_e( w(1,e),u(1,e),gxyz(1,1,e)    ! w   = A  u
      $                             ,ur,us,ut,wk) !  L     L  L
-      enddo                                      ! 
+      enddo                                      !
 
       call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
                                                         !            L
@@ -127,8 +126,8 @@ c-------------------------------------------------------------------------
       include 'SIZE'
       real w(n),u(n)
       real h2i
-  
-      h2i = (n+1)*(n+1)  
+
+      h2i = (n+1)*(n+1)
       do i = 2,n-1
          w(i)=h2i*(2*u(i)-u(i-1)-u(i+1))
       enddo
@@ -235,7 +234,7 @@ c               4--> /      / |     |
 c                   +------+ 2 +    +----> X
 c                   |   5  |  /    /
 c                   |      | /    /
-c                   +------+     Z   
+c                   +------+     Z
 c
 
         nn = 0
@@ -247,7 +246,7 @@ c
                pmask(nn)=i
              endif
           enddo
-        enddo     
+        enddo
         pmask(-1) = -1.
         pmask(0) = nn
       endif
@@ -270,7 +269,7 @@ c     Zeros out boundary
       include 'SIZE'
       integer e,x0,x1,y0,y1,z0,z1
       real w(nx,nx,nx,nelt)
-      
+
 c       write(6,*) x0,x1,y0,y1,z0,z1
       do k=z0,z1
       do j=y0,y1
@@ -300,27 +299,27 @@ c     Used to test if solution to precond. is SPD
 c-----------------------------------------------------------------------
       subroutine get_face(w,nx,ie)
 c     zero out all boundaries as Dirichlet
-c     to change, change this routine to only zero out 
+c     to change, change this routine to only zero out
 c     the nodes desired to be Dirichlet, and leave others alone.
       include 'SIZE'
       include 'PARALLEL'
       real w(1)
       integer nx,ie,nelx,nely,nelz
       integer x0,x1,y0,y1,z0,z1
-      
+
       x0=1
       y0=1
       z0=1
       x1=nx
       y1=nx
       z1=nx
-      
+
       nelxy=nelx*nely
       ngl = lglel(ie)        !global element number
 
       ir = 1+(ngl-1)/nelxy   !global z-count
       iq = mod1(ngl,nelxy)   !global y-count
-      iq = 1+(iq-1)/nelx     
+      iq = 1+(iq-1)/nelx
       ip = mod1(ngl,nelx)    !global x-count
 
 c     write(6,1) ip,iq,ir,nelx,nely,nelz, nelt,' test it'
@@ -413,7 +412,7 @@ c-----------------------------------------------------------------------
       integer i,j,k,l,e,n
 
       integer lt
-      
+
       integer cuda_err
 
       lt = nx1*ny1*nz1*nelt
@@ -431,7 +430,7 @@ c-----------------------------------------------------------------------
      $                ur,us,ut,gxyz,dxm1,dxtm1)
        else
          call ax_cuf2<<<nelt,dim3(nx1,ny1,nz1/4)>>>(w,u,
-     $         ur,us,ut,gxyz,dxm1,dxtm1) 
+     $         ur,us,ut,gxyz,dxm1,dxtm1)
        endif
 !$ACC END HOST_DATA
 
@@ -442,7 +441,7 @@ c-----------------------------------------------------------------------
        endif
 
        istat = cudaDeviceSynchronize()
-       
+
        cuda_err = cudaGetLastError()
        if (cuda_err /= cudaSuccess) then
          write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
@@ -453,7 +452,7 @@ c-----------------------------------------------------------------------
 
 #else
 c ifndef _CUDA
-            
+
 !$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR PRIVATE(wr,ws,wt)
 !DIR NOBLOCKING
       do e = 1,nelt
@@ -484,7 +483,7 @@ c ifndef _CUDA
       enddo
 !$ACC END PARALLEL LOOP
 
-!$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR 
+!$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR
       do e=1,nelt
          do k=1,nz1
          do j=1,ny1
@@ -535,15 +534,15 @@ c     Input:   c - inverse of the counting matrix
 c
 c     Work arrays:   r,w,p,z  - vectors of length n
 c
-c     User-provided ax(w,z,n) returns  w := Az,  
+c     User-provided ax(w,z,n) returns  w := Az,
 c
-c     User-provided solveM(z,r,n) ) returns  z := M^-1 r,  
+c     User-provided solveM(z,r,n) ) returns  z := M^-1 r,
 c
 
       common /mymask/cmask(-1:lx1*ly1*lz1*lelt)
       parameter (lt=lx1*ly1*lz1*lelt)
 
-c      real ur(lt),us(lt),ut(lt),wk(lt)      
+c      real ur(lt),us(lt),ut(lt),wk(lt)
       common /TEMP0_ACC/ ur(lx1,lx1,lx1,lelt)
      $     ,             us(lx1,lx1,lx1,lelt)
      $     ,             ut(lx1,lx1,lx1,lelt)
@@ -552,7 +551,7 @@ c      real ur(lt),us(lt),ut(lt),wk(lt)
 
       real x(n),f(n),r(n),w(n),z(n),c(n)
       real p(lx1,lx1,lx1,lelt)
-      
+
       real g(2*ldim,lt)
 
       character*1 ans
@@ -570,7 +569,7 @@ c     set machine tolerances
 !$ACC DATA PRESENT(x,g,c,r,w,p,z,ur,us,ut,wk)
       call copy(r,f,n)
       call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
- 
+
 !$ACC UPDATE DEVICE(r,cmask,c,p)
       call rzero_acc(x,n)
       rnorm = sqrt(glsc3_acc(r,c,r,n))
@@ -578,19 +577,16 @@ c     set machine tolerances
       if (nid.eq.0)  write(6,6) iter,rnorm
 
       miter = niter
-c     call tester(z,r,n)  
+c      call tester(z,r,n)
       do iter=1,miter
          call solveM_acc(z,r,n)    ! preconditioner here
-
          rtz2=rtz1                                                       ! OPS
          rtz1=glsc3_acc(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
-
          beta = rtz1/rtz2
          if (iter.eq.1) beta=0.0
          call add2s1_acc(p,z,beta,n)                                     ! 2n
 
          call ax_acc(w,p,g,ur,us,ut,wk,n)                                ! flopa
-
          pap=glsc3_acc(w,c,p,n)                                          ! 3n
 
          alpha=rtz1/pap
@@ -602,8 +598,8 @@ c     call tester(z,r,n)
          if (iter.eq.1) rlim2 = rtr*eps**2
          if (iter.eq.1) rtr0  = rtr
          rnorm = sqrt(rtr)
-
-c        if (nid.eq.0.and.mod(iter,100).eq.0) 
+         !print *,'after2', sum(z), sum(r)
+c        if (nid.eq.0.and.mod(iter,100).eq.0)
 c     $   write(6,6) iter,rnorm,alpha,beta,pap
 
     6    format('cg:',i4,1p4e12.4)
@@ -636,7 +632,7 @@ c-----------------------------------------------------------------------
 !$ACC DATA PRESENT(w,pmask)
       if(pmask(-1).lt.0) then
         j=pmask(0)
-       
+
 !$ACC PARALLEL LOOP
         do i = 1,j
            k = pmask(i)
@@ -654,11 +650,11 @@ c               4--> /      / |     |
 c                   +------+ 2 +    +----> X
 c                   |   5  |  /    /
 c                   |      | /    /
-c                   +------+     Z   
+c                   +------+     Z
 c
 
         nn = 0
-!!$ACC PARALLEL LOOP 
+!!$ACC PARALLEL LOOP
         do e  = 1,nelt
            call get_face(w,nx,e)
 !!$ACC LOOP
@@ -668,7 +664,7 @@ c
                pmask(nn)=i
              endif
           enddo
-        enddo     
+        enddo
         pmask(-1) = -1.
         pmask(0) = nn
       endif
@@ -677,13 +673,11 @@ c
       return
       end
 c-----------------------------------------------------------------------
-      subroutine solveM_acc(z,r,n)
+      subroutine solveM_acc(z,rhs,n)
       include 'INPUT'
-      real z(n),r(n)
-
+      real z(1),rhs(1)
       nn = n
-      call h1mg_solve_acc(z,r,nn)
-
+      call h1mg_solve_acc(z,rhs,nn)
       return
       end
 c-----------------------------------------------------------------------
