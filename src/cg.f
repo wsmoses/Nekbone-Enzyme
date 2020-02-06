@@ -65,7 +65,7 @@ c     call tester(z,r,n)
          if (iter.eq.1) rlim2 = rtr*eps**2
          if (iter.eq.1) rtr0  = rtr
          rnorm = sqrt(rtr)
-         !$ACC UPDATE SELF(r,z)
+         print *, rnorm
 c        if (nid.eq.0.and.mod(iter,100).eq.0)
 c     $   write(6,6) iter,rnorm,alpha,beta,pap
 
@@ -76,10 +76,10 @@ c        if (rtr.le.rlim2) goto 1001
 
  1001 continue
 
+      call ax(w,x,g,ur,us,ut,wk,n)
+
       if (nid.eq.0) write(6,6) iter,rnorm,alpha,beta,pap
-
       flop_cg = flop_cg + iter*15.*n
-
       return
       end
 c-----------------------------------------------------------------------
@@ -113,6 +113,7 @@ c-----------------------------------------------------------------------
 
       call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
                                                         !            L
+!ACC UPDATE SELF(w)
       call add2s2(w,u,.1,n)   !2n
       call maskit(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
 
@@ -226,6 +227,7 @@ c-----------------------------------------------------------------------
            w(k)=0.0
         enddo
       else
+
 c         Zero out Dirichlet boundaries.
 c
 c                      +------+     ^ Y
@@ -236,7 +238,6 @@ c                   |   5  |  /    /
 c                   |      | /    /
 c                   +------+     Z
 c
-
         nn = 0
         do e  = 1,nelt
           call get_face(w,nx,e)
@@ -512,7 +513,6 @@ c endif _CUDA
 
       call add2s2_acc(w,u,.1,n)   !2n
       call maskit_acc(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
-
 !$ACC END DATA
 
       nxyz=nx1*ny1*nz1
@@ -531,7 +531,7 @@ c
 c     Input:   f - vector of length n
 c     Input:   g - geometric factors for SEM operator
 c     Input:   c - inverse of the counting matrix
-c
+ccc(w)
 c     Work arrays:   r,w,p,z  - vectors of length n
 c
 c     User-provided ax(w,z,n) returns  w := Az,
@@ -594,11 +594,11 @@ c      call tester(z,r,n)
          call add2s2_acc(x,p,alpha,n)                                    ! 2n
          call add2s2_acc(r,w,alphm,n)                                    ! 2n
          rtr = glsc3_acc(r,c,r,n)                                        ! 3n
-
          if (iter.eq.1) rlim2 = rtr*eps**2
          if (iter.eq.1) rtr0  = rtr
          rnorm = sqrt(rtr)
          !print *,'after2', sum(z), sum(r)
+         print *, rnorm
 c        if (nid.eq.0.and.mod(iter,100).eq.0)
 c     $   write(6,6) iter,rnorm,alpha,beta,pap
 
@@ -608,6 +608,10 @@ c        if (rtr.le.rlim2) goto 1001
       enddo
 
  1001 continue
+
+      call ax_acc(w,x,g,ur,us,ut,wk,n)                                    ! flopa
+!$ACC UPDATE SELF(r,w,x,c,g,us,ut,wk)
+!      call ax(w,x,g,ur,us,ut,wk,n)
 
 !$ACC END DATA
 
@@ -632,7 +636,6 @@ c-----------------------------------------------------------------------
 !$ACC DATA PRESENT(w,pmask)
       if(pmask(-1).lt.0) then
         j=pmask(0)
-
 !$ACC PARALLEL LOOP
         do i = 1,j
            k = pmask(i)

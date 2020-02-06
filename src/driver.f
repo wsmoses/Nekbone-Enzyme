@@ -65,15 +65,13 @@ c     SET UP and RUN NEKBONE
 
            call proxy_setup(ah,bh,ch,dh,zh,wh,g)
            call h1mg_setup_acc
-!$ACC UPDATE DEVICE(g,dxm1,dxtm1)
+!$ACC UPDATE DEVICE(g,dxm1,dxtm1,cmask,c)
            niter = 100
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
 
 !$ACC UPDATE DEVICE(f)
-
-           print *, f(n/10)
 
            if(nid.eq.0) write(6,*)
            call cg_acc(x,f,g,c,r,w,p,z,n,niter,flop_cg)
@@ -90,8 +88,8 @@ c     SET UP and RUN NEKBONE
            mfloplist(icount) = mflops*np
          enddo
       enddo
+!$ACC UPDATE SELF(cmask)
 !$ACC END DATA
-
 #else
       do nx1=nx0,nxN,nxD
          call init_dim
@@ -101,13 +99,12 @@ c     SET UP and RUN NEKBONE
            call set_multiplicity (c)       ! Inverse of counting matrix
 
            call proxy_setup(ah,bh,ch,dh,zh,wh,g)
-           print *, 'lel'
            call h1mg_setup
            niter = 100
            n     = nx1*ny1*nz1*nelt
 
            call set_f(f,c,n)
-           print *, f(n/10)
+
            if(nid.eq.0) write(6,*)
            call cg(x,f,g,c,r,w,p,z,n,niter,flop_cg)
 
@@ -118,12 +115,12 @@ c     SET UP and RUN NEKBONE
            call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
-
            icount = icount + 1
            mfloplist(icount) = mflops*np
          enddo
       enddo
 #endif
+      print *, x(300:400),'w', w(300:400)
       avmflop = 0.0
       do i = 1,icount
          avmflop = avmflop+mfloplist(i)
@@ -135,7 +132,6 @@ c     SET UP and RUN NEKBONE
          write(6,1) avmflop
       endif
   1   format('Avg MFlops = ',1pe12.4)
-
 c     TEST BANDWIDTH BISECTION CAPACITY
 c     call xfer(np,cr_h)
 
@@ -156,9 +152,7 @@ c        arg  = 1.e9*(i*i) ! trouble  w/ certain compilers
 #ifdef _OPENACC
 !$acc update device(f)
 #endif
-      print *, f(n/10)
       call dssum(f)
-      print *, f(n/10)
 #ifdef _OPENACC
 !$acc update host(f)
 #endif
@@ -350,16 +344,16 @@ c-----------------------------------------------------------------------
       n = nx1*ny1*nz1*nelt
 
       call rone(c,n)
-      call adelay
 
 #ifdef _OPENACC
-!$ACC UPDATE DEVICE(C)
+!$ACC UPDATE DEVICE(c)
 #endif
 
+      call adelay
       call gs_op(gsh,c,1,1,0)  ! Gather-scatter operation  ! w   = QQ  w
 
 #ifdef _OPENACC
-!$ACC UPDATE HOST(C)
+!$ACC UPDATE HOST(c)
 #endif
 
       do i=1,n
