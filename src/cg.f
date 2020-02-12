@@ -505,11 +505,7 @@ c ifndef _CUDA
 #endif
 c endif _CUDA
 
-#ifdef GPUDIRECT
       call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
-#else
-      call dssum_acc(w)         ! Gather-scatter operation  ! w   = QQ  w
-#endif
 
       call add2s2_acc(w,u,.1,n)   !2n
       call maskit_acc(w,cmask,nx1,ny1,nz1)  ! Zero out Dirichlet conditions
