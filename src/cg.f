@@ -547,12 +547,6 @@ c      real ur(lt),us(lt),ut(lt),wk(lt)
       real p(lx1,lx1,lx1,lelt)
 
       real g(2*ldim,lt)
-#ifdef MGRID
-      include 'HSMG'
-      parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1), work2(0:lwk-1)
-      common /scrmg/ e_h(2*lt),w_h(lt),r_h(lt)
-#endif
       character*1 ans
 
       pap = 0.0
@@ -566,13 +560,6 @@ c     set machine tolerances
       rtz1=1.0
 
 !$ACC DATA PRESENT(x,g,c,r,w,p,z,ur,us,ut,wk)
-#ifdef MGRID
-!$ACC&     CREATE(mg_imask,work,work2,mg_schwarz_wt,mg_work)
-!$ACC&     CREATE(mg_fast_s,mg_fast_d,mg_rstr_wt,mg_jht,mg_jh)
-!$ACC&     CREATE(e_h,w_h,r_h)
-!$ACC UPDATE DEVICE(mg_rstr_wt,mg_schwarz_wt,mg_jht,mg_jh)
-!$ACC UPDATE DEVICE(mg_imask,mg_fast_s,mg_fast_d)
-#endif
       call copy(r,f,n)
       call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
 

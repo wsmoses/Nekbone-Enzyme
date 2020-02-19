@@ -35,6 +35,13 @@ c-----------------------------------------------------------------------
       real ug
 #endif
 
+#ifdef MGRID
+      include 'HSMG'
+      parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
+      common /hsmgw/ work(0:lwk-1,lelt), work2(0:lwk-1,lelt)
+      common /scrmg/ e_h(2*lt),w_h(lt),r_h(lt)
+#endif
+
       call iniproc(mpi_comm_world)    ! has nekmpi common block
       call init_delay
 
@@ -51,10 +58,15 @@ c     SET UP and RUN NEKBONE
 
 #ifdef _OPENACC
 
-!$ACC  DATA CREATE(x,f,r,w,p,z,c)
+!$ACC  DATA CREATE(x,r,w,p,z,c,f)
 !$ACC&      CREATE(ur,us,ut,wk,ug)
 !$ACC&      CREATE(g,dxm1,dxtm1,cmask)
 !$ACC&      CREATE(ids_lgl1,ids_lgl2,ids_ptr)
+#ifdef MGRID
+!$ACC&     CREATE(mg_imask,work,work2,mg_schwarz_wt,mg_work)
+!$ACC&     CREATE(mg_fast_s,mg_fast_d,mg_rstr_wt,mg_jht,mg_jh)
+!$ACC&     CREATE(e_h,w_h,r_h)
+#endif
       do nx1=nx0,nxN,nxD
          call init_dim
          do nelt=iel0,ielN,ielD
@@ -66,6 +78,10 @@ c     SET UP and RUN NEKBONE
            call proxy_setup(ah,bh,ch,dh,zh,wh,g)
            call h1mg_setup_acc
 !$ACC UPDATE DEVICE(g,dxm1,dxtm1,cmask,c)
+#ifdef MGRID
+!$ACC UPDATE DEVICE(mg_rstr_wt,mg_schwarz_wt,mg_jht,mg_jh)
+!$ACC UPDATE DEVICE(mg_imask,mg_fast_s,mg_fast_d)
+#endif
            niter = 100
            n     = nx1*ny1*nz1*nelt
 
@@ -142,20 +158,18 @@ c--------------------------------------------------------------
       subroutine set_f(f,c,n)
       real f(n),c(n)
 c     act as random number generator
+!$ACC DATA PRESENT(f)
       do i=1,n
 c        arg  = 1.e9*(i*i) ! trouble  w/ certain compilers
          arg  = (i*i)
          arg  = cos(arg)
          f(i) = sin(arg)
       enddo
-
-#ifdef _OPENACC
-!$acc update device(f)
-#endif
+!$ACC UPDATE DEVICE(f)
       call dssum(f)
-#ifdef _OPENACC
-!$acc update host(f)
-#endif
+!$ACC UPDATE SELF(f)
+!$ACC END DATA
+
       call col2 (f,c,n)
       print *, f(n/10)
       return
