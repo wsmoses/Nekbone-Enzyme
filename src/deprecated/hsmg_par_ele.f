@@ -2456,7 +2456,7 @@ c     call exitt
          n  = mg_h1_n(l,mg_fld)
          call h1mg_intp_acc (w_h,e_h(im),l-1)                 ! w   :=  J e
          i1=is-1                                      !            l-1
-!$ACC PARALLEL LOOP         
+!$ACC PARALLEL LOOP
          do i=1,n
             e_h(i1+i) = e_h(i1+i) + w_h(i)                  ! e   :=  e  + w
          enddo                                        !  l       l
@@ -2732,7 +2732,7 @@ c     clobbers r
       nv = nl
       nn=nl**ndim
 !$ACC DATA PRESENT(r,d,e,s,work,work2)
-!$ACC PARALLEL LOOP ASYNC
+!$ACC PARALLEL LOOP INDEPENDENT
       do ie=1,nelt
 !         call h1mg_tnsr3d_el_acc(e(1,1,ie),nl,r(1,1,ie),nl
 !     $                      ,s(1,1,2,1,ie),s(1,1,1,2,ie),s(1,1,1,3,ie))
@@ -2766,7 +2766,7 @@ c     clobbers r
       do i=1,nv*nv
          e(i,j,ie) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
-            e(i,j,ie) = e(i,j,ie) + 
+            e(i,j,ie) = e(i,j,ie) +
      $      work2(i-1 +(l-1)*nv*nv,ie)*s(l,j,1,3,ie)
          enddo
       enddo
@@ -2807,7 +2807,7 @@ c     clobbers r
       do i=1,nv*nv
          e(i,j,ie) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
-            e(i,j,ie) = e(i,j,ie) + 
+            e(i,j,ie) = e(i,j,ie) +
      $      work2(i-1 +(l-1)*nv*nv,ie)*s(l,j,2,3,ie)
          enddo
       enddo
@@ -2831,7 +2831,7 @@ c     v = [C (x) B (x) A] u
       integer i
 !$ACC DATA PRESENT(work,work2,A,Bt,Ct,u,v)
       !call mxm(A,nv,u,nu,work,nu*nu)
-!$ACC PARALLEL LOOP COLLAPSE(2)
+!$ACC PARALLEL LOOP COLLAPSE(2) INDEPENDENT
       do j=1,nu*nu
       do i=1,nv
          work(i-1+nv*(j-1),1) = 0.0
@@ -2841,7 +2841,7 @@ c     v = [C (x) B (x) A] u
       enddo
       enddo
 !$ACC END PARALLEL LOOP
-!$ACC PARALLEL LOOP COLLAPSE(3)
+!$ACC PARALLEL LOOP COLLAPSE(3) INDEPENDENT
       do k = 0,nu-1
          !call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
@@ -2857,12 +2857,12 @@ c     v = [C (x) B (x) A] u
       enddo
 !$ACC END PARALLEL LOOP
       !call mxm(work2,nv*nv,Ct,nu,v,nv)
-!$ACC PARALLEL LOOP COLLAPSE(2)
+!$ACC PARALLEL LOOP COLLAPSE(2) INDEPENDENT
       do j=1,nv
       do i=1,nv*nv
          v(i,j) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
-            v(i,j) = v(i,j) + 
+            v(i,j) = v(i,j) +
      $      work2(i-1 +(l-1)*nv*nv,1)*Ct(l,j)
          enddo
       enddo
@@ -2893,7 +2893,7 @@ c     u = wt .* u
       real wt(nx,nz,2,ndim,nelt)
       integer e
 !$ACC DATA PRESENT(u,wt)
-!$ACC PARALLEL LOOP
+!$ACC PARALLEL LOOP INDEPENDENT
       do ie=1,nelt
 !$ACC LOOP COLLAPSE(2)
          do k=1,nz
@@ -2955,52 +2955,51 @@ c-----------------------------------------------------------------------
 
       nu3 = nu**3
       nv3 = nv**3
+!$ACC PARALLEL LOOP
       do e=e0,ee,es
          iu = 1 + (e-1)*nu3
          iv = 1 + (e-1)*nv3
          !call mxm(A,nv,v(iu),nu,work,nu*nu)
-!$ACC PARALLEL LOOP COLLAPSE(2)
+!$ACC LOOP COLLAPSE(2)
          do j=1,nu*nu
             do i=1,nv
-            work(i-1+nv*(j-1),1) = 0.0
+            work(i-1+nv*(j-1),e) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               work(i-1+(j-1)*nv,1) =
-     $         work(i-1+(j-1)*nv,1) + 
+               work(i-1+(j-1)*nv,e) =
+     $         work(i-1+(j-1)*nv,e) +
      $         A(i,l)*v(l+nu*(j-1)+iu-1)
             enddo
             enddo
          enddo
-!$ACC END PARALLEL LOOP
 
-!$ACC PARALLEL LOOP COLLAPSE(3)
+!$ACC LOOP COLLAPSE(3)
          do k = 0,nu-1
         !    call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
          do i=1,nv
-            work2(i-1 + (j-1)*nv+k*nv*nv,1) = 0.0
+            work2(i-1 + (j-1)*nv+k*nv*nv,e) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               work2(i-1 + (j-1)*nv+k*nv*nv,1) =
-     $         work2(i-1 + (j-1)*nv+k*nv*nv,1) +
-     $         work(i-1 + (l-1)*nv+k*nv*nu,1)*Bt(l,j)
+               work2(i-1 + (j-1)*nv+k*nv*nv,e) =
+     $         work2(i-1 + (j-1)*nv+k*nv*nv,e) +
+     $         work(i-1 + (l-1)*nv+k*nv*nu,e)*Bt(l,j)
             enddo
          enddo
          enddo
          enddo
-!$ACC END PARALLEL LOOP
 
         ! call mxm(work2,nv*nv,Ct,nu,v(iv),nv)
-!$ACC PARALLEL LOOP COLLAPSE(2)
+!$ACC LOOP COLLAPSE(2)
          do j=1,nv
          do i=1,nv*nv
             v(i+nv*nv*(j-1)+iv-1) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               v(i+nv*nv*(j-1)+iv-1) = v(i+nv*nv*(j-1)+iv-1) + 
-     $         work2(i-1 +(l-1)*nv*nv,1)*Ct(l,j)
+               v(i+nv*nv*(j-1)+iv-1) = v(i+nv*nv*(j-1)+iv-1) +
+     $         work2(i-1 +(l-1)*nv*nv,e)*Ct(l,j)
              enddo
          enddo
          enddo
-!$ACC END PARALLEL LOOP
       enddo
+!$ACC END PARALLEL LOOP
 !$ACC END DATA
       return
       end
@@ -3072,7 +3071,7 @@ c     v = [C (x) B (x) A] u
          do i=1,nv*nv
             v(i,j,ie) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               v(i,j,ie) = v(i,j,ie) + 
+               v(i,j,ie) = v(i,j,ie) +
      $         work2(i-1 +(l-1)*nv*nv,ie)*Ct(l,j)
             enddo
          enddo
