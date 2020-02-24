@@ -62,11 +62,6 @@ c     SET UP and RUN NEKBONE
 !$ACC&      CREATE(ur,us,ut,wk,ug)
 !$ACC&      CREATE(g,dxm1,dxtm1,cmask)
 !$ACC&      CREATE(ids_lgl1,ids_lgl2,ids_ptr)
-#ifdef MGRID
-!$ACC&     CREATE(mg_imask,work,work2,mg_schwarz_wt,mg_work)
-!$ACC&     CREATE(mg_fast_s,mg_fast_d,mg_rstr_wt,mg_jht,mg_jh)
-!$ACC&     CREATE(e_h,w_h,r_h)
-#endif
       do nx1=nx0,nxN,nxD
          call init_dim
          do nelt=iel0,ielN,ielD
@@ -79,6 +74,9 @@ c     SET UP and RUN NEKBONE
            call h1mg_setup_acc
 !$ACC UPDATE DEVICE(g,dxm1,dxtm1,cmask,c)
 #ifdef MGRID
+!$ACC DATA CREATE(mg_imask,work,work2,mg_schwarz_wt,mg_work)
+!$ACC&     CREATE(mg_fast_s,mg_fast_d,mg_rstr_wt,mg_jht,mg_jh)
+!$ACC&     CREATE(e_h,w_h,r_h)
 !$ACC UPDATE DEVICE(mg_rstr_wt,mg_schwarz_wt,mg_jht,mg_jh)
 !$ACC UPDATE DEVICE(mg_imask,mg_fast_s,mg_fast_d)
 #endif
@@ -99,7 +97,9 @@ c     SET UP and RUN NEKBONE
            call set_timer_flop_cnt(1)
 
            call gs_free(gsh)
-
+#ifdef MGRID
+!$ACC END DATA
+#endif
            icount = icount + 1
            mfloplist(icount) = mflops*np
          enddo
