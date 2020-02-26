@@ -136,7 +136,6 @@ c     SET UP and RUN NEKBONE
          enddo
       enddo
 #endif
-      print *, x(300:400),'w', w(300:400)
       avmflop = 0.0
       do i = 1,icount
          avmflop = avmflop+mfloplist(i)
