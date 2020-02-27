@@ -2587,20 +2587,12 @@ c-----------------------------------------------------------------------
       subroutine h1mg_mask_acc(w,mask,nel)
       include 'SIZE'
       real    w   (1)
-      integer mask(0)        ! Pointer to Dirichlet BCs
+      integer mask(1)        ! Pointer to Dirichlet BCs
       integer e
-!$ACC DATA PRESENT(w,mask)
-!$ACC PARALLEL LOOP 
       do e=1,nel
          im = mask(e)
-!         call mg_mask_e_acc(w,mask(im)) ! Zero out Dirichlet conditions
-         n=mask(im)
-         do i=1,n
-            w(mask(im+i)) = 0.
-         enddo
+         call mg_mask_e_acc(w,mask(im)) ! Zero out Dirichlet conditions
       enddo
-!$ACC END PARALLEL LOOP
-!$ACC END DATA
       return
       end
 c-----------------------------------------------------------------------
@@ -2630,7 +2622,7 @@ c     strip off ghost cell
       integer i,j,k,ie
 !$ACC DATA PRESENT(a,b)
 
-!$ACC PARALLEL LOOP COLLAPSE(4) 
+!$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR
       do ie=1,nelt
       do k=1,n
       do j=1,n
@@ -2653,7 +2645,7 @@ c     border nodes (ghost cell = 0)
       integer i,j,k,ie
 !$ACC DATA PRESENT(a,b)
       call rzero_acc(a,(n+2)*(n+2)*(n+2)*nelt)
-!$ACC PARALLEL LOOP COLLAPSE(4) 
+!$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR
       do ie=1,nelt
       do k=1,n
       do j=1,n
@@ -2681,7 +2673,7 @@ c-----------------------------------------------------------------------
 
 !$ACC PARALLEL LOOP
       do ie=1,nelt
-!$ACC LOOP COLLAPSE(2)
+!$ACC LOOP SEQ
          do k=i0,i1
          do j=i0,i1
             arr1(l1+1 ,j,k,ie) = f1*arr1(l1+1 ,j,k,ie)
@@ -2690,7 +2682,7 @@ c-----------------------------------------------------------------------
      $                          +f2*arr2(nx-l2,j,k,ie)
          enddo
          enddo
-!$ACC LOOP COLLAPSE(2)
+!$ACC LOOP SEQ
          do k=i0,i1
          do i=i0,i1
             arr1(i,l1+1 ,k,ie) = f1*arr1(i,l1+1 ,k,ie)
@@ -2699,7 +2691,7 @@ c-----------------------------------------------------------------------
      $                          +f2*arr2(i,nx-l2,k,ie)
          enddo
          enddo
-!$ACC LOOP COLLAPSE(2)
+!$ACC LOOP SEQ
          do j=i0,i1
          do i=i0,i1
             arr1(i,j,l1+1 ,ie) = f1*arr1(i,j,l1+1 ,ie)
@@ -2780,9 +2772,9 @@ c     clobbers r
       enddo
       enddo
 !$ACC LOOP
-         do i=1,nn
+      do i=1,nn
             r(i,1,ie)=d(i,ie)*e(i,1,ie)
-         enddo
+      enddo
 !         call h1mg_tnsr3d_el_acc(e(1,1,ie),nl,r(1,1,ie),nl
 !     $                      ,s(1,1,1,1,ie),s(1,1,2,2,ie),s(1,1,2,3,ie))
 !$ACC LOOP COLLAPSE(2)
@@ -3036,7 +3028,7 @@ c-------------------------------------------------------T--------------
 c     computes
 c
 c     v = [C (x) B (x) A] u
-      subroutine h1mg_tnsr3d_acc(v,nv,u,nu,A,Bt,Ct)
+      subroutine h1mg_tnsr3d_acc2(v,nv,u,nu,A,Bt,Ct)
       integer nv,nu
       real v(nv*nv,nv,nelt),u(nu,nu*nu,nelt)
       real A(nv,nu),Bt(nu,nv),Ct(nu,nv)
@@ -3088,6 +3080,50 @@ c     v = [C (x) B (x) A] u
 !$ACC END DATA
       return
       end
+c----------------------------
+      subroutine h1mg_tnsr3d_acc(v,nv,u,nu,A,Bt,Ct)
+      integer nv,nu
+      real v(nv,nv,nv,nelt),u(nu,nu,nu,nelt)
+      real A(nv,nu),Bt(nu,nv),Ct(nu,nv)
+      real temp
+      include 'SIZE'
+      parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
+      common /hsmgw/ work(0:lwk-1,lelt),work2(0:lwk-1,lelt)
+      integer ie,i,j,k,l,m,m1
+!$ACC DATA PRESENT(A,Bt,Ct,u,v)
+!$ACC PARALLEL LOOP 
+      do ie=1,nelt
+!$ACC LOOP COLLAPSE(3)
+      do m1 =1,nv
+      do m = 1,nv
+      do l = 1,nv
+         v(l,m,m1,ie) = 0.0
+!         temp = 0.0
+!!$ACC LOOP REDUCTION(+:temp) COLLAPSE(3)
+         do k = 1,nu
+         temp = 0.0
+!!$ACC LOOP REDUCTION(+:temp) COLLAPSE(2)
+         do j = 1,nu
+         do i = 1,nu
+            v(l,m,m1,ie) = v(l,m,m1,ie) +
+     $                     Ct(k,m1)*Bt(j,m)*A(l,i)*u(i,j,k,ie)
+!             temp = 
+!     $               Bt(j,m)*A(l,i)*u(i,j,k,ie)
+         enddo
+!         v(l,m,m1,ie) = Bt(j,m)*temp + v(l,m,m1,ie)
+         enddo
+!         v(l,m,m1,ie) = Ct(k,m1)*temp + v(l,m,m1,ie)
+         enddo
+!         v(l,m,m1,ie) = temp
+      enddo
+      enddo
+      enddo
+      enddo
+!$ACC END PARALLEL LOOP
+!$ACC END DATA
+      return
+      end
+c
 c----------------------------------------------------------------------
       subroutine hsmg_coarse_solve_acc(e,r)
       include 'SIZE'
