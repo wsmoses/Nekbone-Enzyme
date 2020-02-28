@@ -38,7 +38,7 @@ c-----------------------------------------------------------------------
 #ifdef MGRID
       include 'HSMG'
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1,lelt), work2(0:lwk-1,lelt)
+      common /hsmgw/ work(0:lwk-1), work2(0:lwk-1)
       common /scrmg/ e_h(2*lt),w_h(lt),r_h(lt)
 #endif
 

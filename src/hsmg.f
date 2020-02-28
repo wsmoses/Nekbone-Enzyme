@@ -2551,7 +2551,7 @@ c-----------------------------------------------------------------------
 !$ACC DATA PRESENT(e,wt)
 !$ACC PARALLEL LOOP
       do ie=1,nelt
-!$ACC LOOP SEQ
+!$ACC LOOP COLLAPSE(2) 
          do k=1,n
          do j=1,n
             e(1  ,j,k,ie)=e(1  ,j,k,ie)*sqrt(wt(j,k,1,1,ie))
@@ -2560,7 +2560,7 @@ c-----------------------------------------------------------------------
             e(n  ,j,k,ie)=e(n  ,j,k,ie)*sqrt(wt(j,k,4,1,ie))
          enddo
          enddo
-!$ACC LOOP SEQ
+!$ACC LOOP COLLAPSE(2) 
          do k=1,n
          do i=3,n-2
             e(i,1  ,k,ie)=e(i,1  ,k,ie)*sqrt(wt(i,k,1,2,ie))
@@ -2569,7 +2569,7 @@ c-----------------------------------------------------------------------
             e(i,n  ,k,ie)=e(i,n  ,k,ie)*sqrt(wt(i,k,4,2,ie))
          enddo
          enddo
-!$ACC LOOP SEQ
+!$ACC LOOP COLLAPSE(2)
          do j=3,n-2
          do i=3,n-2
             e(i,j,1  ,ie)=e(i,j,1  ,ie)*sqrt(wt(i,j,1,3,ie))
@@ -2589,10 +2589,20 @@ c-----------------------------------------------------------------------
       real    w   (1)
       integer mask(1)        ! Pointer to Dirichlet BCs
       integer e
+!$ACC DATA PRESENT(w,mask)
+!$ACC PARALLEL LOOP 
       do e=1,nel
          im = mask(e)
-         call mg_mask_e_acc(w,mask(im)) ! Zero out Dirichlet conditions
+!         call mg_mask_e_acc(w,mask(im)) ! Zero out Dirichlet conditions
+         n=mask(im)
+!$ACC LOOP
+         do i=1,n
+            w(mask(im+i)) = 0.
+         enddo
       enddo
+!$ACC END PARALLEL LOOP
+!$ACC END DATA
+ 
       return
       end
 c-----------------------------------------------------------------------
@@ -2622,7 +2632,7 @@ c     strip off ghost cell
       integer i,j,k,ie
 !$ACC DATA PRESENT(a,b)
 
-!$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR
+!$ACC PARALLEL LOOP COLLAPSE(4) 
       do ie=1,nelt
       do k=1,n
       do j=1,n
@@ -2645,7 +2655,7 @@ c     border nodes (ghost cell = 0)
       integer i,j,k,ie
 !$ACC DATA PRESENT(a,b)
       call rzero_acc(a,(n+2)*(n+2)*(n+2)*nelt)
-!$ACC PARALLEL LOOP COLLAPSE(4) GANG WORKER VECTOR
+!$ACC PARALLEL LOOP COLLAPSE(4) 
       do ie=1,nelt
       do k=1,n
       do j=1,n
@@ -2673,7 +2683,7 @@ c-----------------------------------------------------------------------
 
 !$ACC PARALLEL LOOP
       do ie=1,nelt
-!$ACC LOOP SEQ
+!$ACC LOOP COLLAPSE(2) 
          do k=i0,i1
          do j=i0,i1
             arr1(l1+1 ,j,k,ie) = f1*arr1(l1+1 ,j,k,ie)
@@ -2682,7 +2692,7 @@ c-----------------------------------------------------------------------
      $                          +f2*arr2(nx-l2,j,k,ie)
          enddo
          enddo
-!$ACC LOOP SEQ
+!$ACC LOOP COLLAPSE(2) 
          do k=i0,i1
          do i=i0,i1
             arr1(i,l1+1 ,k,ie) = f1*arr1(i,l1+1 ,k,ie)
@@ -2691,7 +2701,7 @@ c-----------------------------------------------------------------------
      $                          +f2*arr2(i,nx-l2,k,ie)
          enddo
          enddo
-!$ACC LOOP SEQ
+!$ACC LOOP COLLAPSE(2)
          do j=i0,i1
          do i=i0,i1
             arr1(i,j,l1+1 ,ie) = f1*arr1(i,j,l1+1 ,ie)
@@ -2725,23 +2735,23 @@ c     clobbers r
       real s(nl,nl,2,ndim,nelt)
       real d(nl**ndim,nelt)
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1,lelt), work2(0:lwk-1,lelt)
+      common /hsmgw/ work(0:lwk-1), work2(0:lwk-1)
       integer ie,nn,i
       integer nv, nu
       nu = nl
       nv = nl
       nn=nl**ndim
 !$ACC DATA PRESENT(r,d,e,s,work,work2)
-!$ACC PARALLEL LOOP 
+!$ACC PARALLEL LOOP PRIVATE(work, work2) 
       do ie=1,nelt
 !         call h1mg_tnsr3d_el_acc(e(1,1,ie),nl,r(1,1,ie),nl
 !     $                      ,s(1,1,2,1,ie),s(1,1,1,2,ie),s(1,1,1,3,ie))
-!$ACC LOOP COLLAPSE(2)
+!$ACC LOOP COLLAPSE(2) 
       do j=1,nu*nu
       do i=1,nv
-         work(i-1+nv*(j-1),ie) = 0.0
+         work(i-1+nv*(j-1)) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
-            work(i-1+(j-1)*nv,ie) = work(i-1+(j-1)*nv,ie)+
+            work(i-1+(j-1)*nv) = work(i-1+(j-1)*nv)+
      $                             s(i,l,2,1,ie)*r(l,j,ie)
          enddo
       enddo
@@ -2751,11 +2761,11 @@ c     clobbers r
          !call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
          do i=1,nv
-            work2(i-1 + (j-1)*nv+k*nv*nv,ie) = 0.0
+            work2(i-1 + (j-1)*nv+k*nv*nv) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-             work2(i-1 + (j-1)*nv+k*nv*nv,ie) =
-     $       work2(i-1 + (j-1)*nv+k*nv*nv,ie) +
-     $       work(i-1 + (l-1)*nv+k*nv*nu,ie)*s(l,j,1,2,ie)
+             work2(i-1 + (j-1)*nv+k*nv*nv) =
+     $       work2(i-1 + (j-1)*nv+k*nv*nv) +
+     $       work(i-1 + (l-1)*nv+k*nv*nu)*s(l,j,1,2,ie)
             enddo
          enddo
          enddo
@@ -2767,8 +2777,9 @@ c     clobbers r
          e(i,j,ie) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
             e(i,j,ie) = e(i,j,ie) +
-     $      work2(i-1 +(l-1)*nv*nv,ie)*s(l,j,1,3,ie)
+     $      work2(i-1 +(l-1)*nv*nv)*s(l,j,1,3,ie)
          enddo
+!         r(i +(j-1)*nv*nv,1,ie) = d(i +(j-1)*nv*nv,ie)*e(i,j,ie)
       enddo
       enddo
 !$ACC LOOP
@@ -2780,9 +2791,9 @@ c     clobbers r
 !$ACC LOOP COLLAPSE(2)
       do j=1,nu*nu
       do i=1,nv
-         work(i-1+nv*(j-1),ie) = 0.0
+         work(i-1+nv*(j-1)) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
-            work(i-1+(j-1)*nv,ie) = work(i-1+(j-1)*nv,ie)+
+            work(i-1+(j-1)*nv) = work(i-1+(j-1)*nv)+
      $                             s(i,l,1,1,ie)*r(l,j,ie)
          enddo
       enddo
@@ -2792,11 +2803,11 @@ c     clobbers r
          !call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
          do i=1,nv
-            work2(i-1 + (j-1)*nv+k*nv*nv,ie) = 0.0
+            work2(i-1 + (j-1)*nv+k*nv*nv) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-             work2(i-1 + (j-1)*nv+k*nv*nv,ie) =
-     $       work2(i-1 + (j-1)*nv+k*nv*nv,ie) +
-     $       work(i-1 + (l-1)*nv+k*nv*nu,ie)*s(l,j,2,2,ie)
+             work2(i-1 + (j-1)*nv+k*nv*nv) =
+     $       work2(i-1 + (j-1)*nv+k*nv*nv) +
+     $       work(i-1 + (l-1)*nv+k*nv*nu)*s(l,j,2,2,ie)
             enddo
          enddo
          enddo
@@ -2808,7 +2819,7 @@ c     clobbers r
          e(i,j,ie) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
             e(i,j,ie) = e(i,j,ie) +
-     $      work2(i-1 +(l-1)*nv*nv,ie)*s(l,j,2,3,ie)
+     $      work2(i-1 +(l-1)*nv*nv)*s(l,j,2,3,ie)
          enddo
       enddo
       enddo
@@ -2826,16 +2837,16 @@ c     v = [C (x) B (x) A] u
       real v(nv*nv,nv),u(nu,nu*nu),A(nv,nu),Bt(nu,nv),Ct(nu,nv)
       include 'SIZE'
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1,lelt), work2(0:lwk-1,lelt)
+      common /hsmgw/ work(0:lwk-1), work2(0:lwk-1)
       integer i
 !$ACC DATA PRESENT(work,work2,A,Bt,Ct,u,v)
       !call mxm(A,nv,u,nu,work,nu*nu)
 !$ACC PARALLEL LOOP COLLAPSE(2) 
       do j=1,nu*nu
       do i=1,nv
-         work(i-1+nv*(j-1),1) = 0.0
+         work(i-1+nv*(j-1)) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
-            work(i-1+(j-1)*nv,1) = work(i-1+(j-1)*nv,1)+A(i,l)*u(l,j)
+            work(i-1+(j-1)*nv) = work(i-1+(j-1)*nv)+A(i,l)*u(l,j)
          enddo
       enddo
       enddo
@@ -2845,11 +2856,11 @@ c     v = [C (x) B (x) A] u
          !call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
          do i=1,nv
-            work2(i-1 + (j-1)*nv+k*nv*nv,1) = 0.0
+            work2(i-1 + (j-1)*nv+k*nv*nv) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-             work2(i-1 + (j-1)*nv+k*nv*nv,1) =
-     $       work2(i-1 + (j-1)*nv+k*nv*nv,1) +
-     $       work(i-1 + (l-1)*nv+k*nv*nu,1)*Bt(l,j)
+             work2(i-1 + (j-1)*nv+k*nv*nv) =
+     $       work2(i-1 + (j-1)*nv+k*nv*nv) +
+     $       work(i-1 + (l-1)*nv+k*nv*nu)*Bt(l,j)
             enddo
          enddo
          enddo
@@ -2862,7 +2873,7 @@ c     v = [C (x) B (x) A] u
          v(i,j) = 0.0
          do l=1,nu    ! serial loop, no reduction needed
             v(i,j) = v(i,j) +
-     $      work2(i-1 +(l-1)*nv*nv,1)*Ct(l,j)
+     $      work2(i-1 +(l-1)*nv*nv)*Ct(l,j)
          enddo
       enddo
       enddo
@@ -2939,7 +2950,7 @@ c-----------------------------------------------------------------------
       real v(nu*nu*nu*nelt),A(nv,nu),Bt(nu,nv)
       real Ct(nu,nv)
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1,lelt),work2(0:lwk-1,lelt)
+      common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
       integer e,e0,ee,es
 !$ACC DATA PRESENT(work,work2,A,Bt,Ct,v)
       e0=1
@@ -2954,7 +2965,7 @@ c-----------------------------------------------------------------------
 
       nu3 = nu**3
       nv3 = nv**3
-!$ACC PARALLEL LOOP
+!$ACC PARALLEL LOOP PRIVATE(work, work2)
       do e=e0,ee,es
          iu = 1 + (e-1)*nu3
          iv = 1 + (e-1)*nv3
@@ -2962,10 +2973,10 @@ c-----------------------------------------------------------------------
 !$ACC LOOP COLLAPSE(2)
          do j=1,nu*nu
             do i=1,nv
-            work(i-1+nv*(j-1),e) = 0.0
+            work(i-1+nv*(j-1)) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               work(i-1+(j-1)*nv,e) =
-     $         work(i-1+(j-1)*nv,e) +
+               work(i-1+(j-1)*nv) =
+     $         work(i-1+(j-1)*nv) +
      $         A(i,l)*v(l+nu*(j-1)+iu-1)
             enddo
             enddo
@@ -2976,11 +2987,11 @@ c-----------------------------------------------------------------------
         !    call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
          do i=1,nv
-            work2(i-1 + (j-1)*nv+k*nv*nv,e) = 0.0
+            work2(i-1 + (j-1)*nv+k*nv*nv) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               work2(i-1 + (j-1)*nv+k*nv*nv,e) =
-     $         work2(i-1 + (j-1)*nv+k*nv*nv,e) +
-     $         work(i-1 + (l-1)*nv+k*nv*nu,e)*Bt(l,j)
+               work2(i-1 + (j-1)*nv+k*nv*nv) =
+     $         work2(i-1 + (j-1)*nv+k*nv*nv) +
+     $         work(i-1 + (l-1)*nv+k*nv*nu)*Bt(l,j)
             enddo
          enddo
          enddo
@@ -2993,7 +3004,7 @@ c-----------------------------------------------------------------------
             v(i+nv*nv*(j-1)+iv-1) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
                v(i+nv*nv*(j-1)+iv-1) = v(i+nv*nv*(j-1)+iv-1) +
-     $         work2(i-1 +(l-1)*nv*nv,e)*Ct(l,j)
+     $         work2(i-1 +(l-1)*nv*nv)*Ct(l,j)
              enddo
          enddo
          enddo
@@ -3028,24 +3039,24 @@ c-------------------------------------------------------T--------------
 c     computes
 c
 c     v = [C (x) B (x) A] u
-      subroutine h1mg_tnsr3d_acc2(v,nv,u,nu,A,Bt,Ct)
+      subroutine h1mg_tnsr3d_acc(v,nv,u,nu,A,Bt,Ct)
       integer nv,nu
       real v(nv*nv,nv,nelt),u(nu,nu*nu,nelt)
       real A(nv,nu),Bt(nu,nv),Ct(nu,nv)
       include 'SIZE'
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1,lelt),work2(0:lwk-1,lelt)
+      common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
       integer ie, i
 !$ACC DATA PRESENT(work,work2,A,Bt,Ct,u,v)
-!$ACC PARALLEL LOOP
+!$ACC PARALLEL LOOP PRIVATE(work,work2)
       do ie=1,nelt
          !call mxm(A,nv,u(1,1,ie),nu,work,nu*nu)
 !$ACC LOOP COLLAPSE(2)
          do j=1,nu*nu
          do i=1,nv
-            work(i-1+nv*(j-1),ie) = 0.0
+            work(i-1+nv*(j-1)) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-               work(i-1+(j-1)*nv,ie) = work(i-1+(j-1)*nv,ie) +
+               work(i-1+(j-1)*nv) = work(i-1+(j-1)*nv) +
      $                                A(i,l)*u(l,j,ie)
             enddo
          enddo
@@ -3055,11 +3066,11 @@ c     v = [C (x) B (x) A] u
             !call mxm(work(nv*nu*i),nv,Bt,nu,work2(nv*nv*i),nv)
          do j=1,nv
          do i=1,nv
-            work2(i-1 + (j-1)*nv+k*nv*nv,ie) = 0.0
+            work2(i-1 + (j-1)*nv+k*nv*nv) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
-             work2(i-1 + (j-1)*nv+k*nv*nv,ie) =
-     $       work2(i-1 + (j-1)*nv+k*nv*nv,ie) +
-     $       work(i-1 + (l-1)*nv+k*nv*nu,ie)*Bt(l,j)
+             work2(i-1 + (j-1)*nv+k*nv*nv) =
+     $       work2(i-1 + (j-1)*nv+k*nv*nv) +
+     $       work(i-1 + (l-1)*nv+k*nv*nu)*Bt(l,j)
             enddo
          enddo
          enddo
@@ -3071,7 +3082,7 @@ c     v = [C (x) B (x) A] u
             v(i,j,ie) = 0.0
             do l=1,nu    ! serial loop, no reduction needed
                v(i,j,ie) = v(i,j,ie) +
-     $         work2(i-1 +(l-1)*nv*nv,ie)*Ct(l,j)
+     $         work2(i-1 +(l-1)*nv*nv)*Ct(l,j)
             enddo
          enddo
          enddo
@@ -3081,19 +3092,19 @@ c     v = [C (x) B (x) A] u
       return
       end
 c----------------------------
-      subroutine h1mg_tnsr3d_acc(v,nv,u,nu,A,Bt,Ct)
+      subroutine h1mg_tnsr3d_acc2(v,nv,u,nu,A,Bt,Ct)
       integer nv,nu
       real v(nv,nv,nv,nelt),u(nu,nu,nu,nelt)
       real A(nv,nu),Bt(nu,nv),Ct(nu,nv)
       real temp
       include 'SIZE'
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
-      common /hsmgw/ work(0:lwk-1,lelt),work2(0:lwk-1,lelt)
+      common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
       integer ie,i,j,k,l,m,m1
 !$ACC DATA PRESENT(A,Bt,Ct,u,v)
-!$ACC PARALLEL LOOP 
+!$ACC PARALLEL LOOP GANG 
       do ie=1,nelt
-!$ACC LOOP COLLAPSE(3)
+!$ACC LOOP COLLAPSE(3) 
       do m1 =1,nv
       do m = 1,nv
       do l = 1,nv
@@ -3101,9 +3112,10 @@ c----------------------------
 !         temp = 0.0
 !!$ACC LOOP REDUCTION(+:temp) COLLAPSE(3)
          do k = 1,nu
-         temp = 0.0
+!         temp = 0.0
 !!$ACC LOOP REDUCTION(+:temp) COLLAPSE(2)
          do j = 1,nu
+!!$ACC LOOP VECTOR
          do i = 1,nu
             v(l,m,m1,ie) = v(l,m,m1,ie) +
      $                     Ct(k,m1)*Bt(j,m)*A(l,i)*u(i,j,k,ie)
