@@ -424,8 +424,10 @@ c-----------------------------------------------------------------------
 
 !$ACC HOST_DATA USE_DEVICE(w,u(:,:,:,:),ur,us,ut,gxyz,dxm1,dxtm1)
        if (nx1.le.10) then
-         call ax_cuf2<<<nelt,dim3(nx1,ny1,nz1)>>>(w,u,
-     $                ur,us,ut,gxyz,dxm1,dxtm1)
+!         call ax_cuf2<<<nelt,dim3(nx1,ny1,1)>>>(w,u,
+!     $                ur,us,ut,gxyz,dxm1,dxtm1)
+         call ax_cuda2(w, u,
+     $     gxyz,dxm1,dxtm1,nelt)
        else if (nx1.eq.12) then
          call ax_cuf2<<<nelt,dim3(nx1,ny1,nz1/2)>>>(w,u,
      $                ur,us,ut,gxyz,dxm1,dxtm1)
