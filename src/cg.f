@@ -271,7 +271,11 @@ c     Zeros out boundary
       integer e,x0,x1,y0,y1,z0,z1
       real w(nx,nx,nx,nelt)
 
-c       write(6,*) x0,x1,y0,y1,z0,z1
+      !write(6,*) x0,x1,y0,y1,z0,z1
+#ifdef _OPENACC
+!$ACC DATA PRESENT(w)
+!$ACC PARALLEL LOOP COLLAPSE(3)
+#endif
       do k=z0,z1
       do j=y0,y1
       do i=x0,x1
@@ -279,6 +283,10 @@ c       write(6,*) x0,x1,y0,y1,z0,z1
       enddo
       enddo
       enddo
+#ifdef _OPENACC
+!$ACC END PARALLEL LOOP
+!$ACC END DATA
+#endif
       return
       end
 c-----------------------------------------------------------------------
@@ -569,11 +577,9 @@ c     set machine tolerances
 
       rtz1=1.0
 
-!$ACC DATA PRESENT(x,g,c,r,w,p,z,ur,us,ut,wk)
-      call copy(r,f,n)
-      call maskit (r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
-
-!$ACC UPDATE DEVICE(r,cmask,c,p)
+!$ACC DATA PRESENT(x,g,c,cmask,r,w,p,z,ur,us,ut,wk)
+      call copy_acc(r,f,n)
+      call maskit_acc(r,cmask,nx1,ny1,nz1) ! Zero out Dirichlet conditions
       call rzero_acc(x,n)
       rnorm = sqrt(glsc3_acc(r,c,r,n))
       iter = 0
@@ -645,8 +651,8 @@ c-----------------------------------------------------------------------
         enddo
 
       else
-         write(*,*) "OpenACC version is not implemented yet"
-         stop
+!         write(*,*) "OpenACC version is not implemented yet"
+!         stop
 c         Zero out Dirichlet boundaries.
 c
 c                      +------+     ^ Y
@@ -659,16 +665,16 @@ c                   +------+     Z
 c
 
         nn = 0
-!!$ACC PARALLEL LOOP
         do e  = 1,nelt
-           call get_face(w,nx,e)
-!!$ACC LOOP
+          call get_face(w,nx,e)
+!$ACC PARALLEL LOOP SEQ        
           do i = 1,nxyz
              if(w(i).eq.0) then
                nn=nn+1
                pmask(nn)=i
              endif
           enddo
+!$ACC END PARALLEL LOOP
         enddo
         pmask(-1) = -1.
         pmask(0) = nn
