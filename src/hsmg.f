@@ -2729,6 +2729,9 @@ c     clobbers r
 c-----------------------------------------------------------------------
 c     clobbers r
       subroutine h1mg_do_fast_acc(e,r,s,d,nl)
+#ifdef _CUDA
+      use cudafor
+#endif
       include 'SIZE'
       real e(nl*nl,nl,nelt)
       real r(nl,nl*nl,nelt)
@@ -2737,11 +2740,32 @@ c     clobbers r
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
       common /hsmgw/ work(0:lwk-1), work2(0:lwk-1)
       integer ie,nn,i
-      integer nv, nu
+      integer nv, nu, cuda_err
       nu = nl
       nv = nl
       nn=nl**ndim
 !$ACC DATA PRESENT(r,d,e,s,work,work2)
+#ifdef _CUDA
+!$ACC HOST_DATA USE_DEVICE(e,r,s,d)
+      call h1mg_do_fast_cuda(e,r,s,d,nl,nelt)
+!$ACC END HOST_DATA
+      cuda_err = cudaGetLastError()
+      if (cuda_err /= cudaSuccess) then
+        write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+        call exitt
+      endif
+
+      istat = cudaDeviceSynchronize()
+
+      cuda_err = cudaGetLastError()
+      if (cuda_err /= cudaSuccess) then
+        write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+        call exitt
+      endif
+
+  815    format('CUDA ERROR', I3, ': ', A)
+
+#else
 !$ACC PARALLEL LOOP PRIVATE(work, work2) 
       do ie=1,nelt
 !         call h1mg_tnsr3d_el_acc(e(1,1,ie),nl,r(1,1,ie),nl
@@ -2825,6 +2849,7 @@ c     clobbers r
       enddo
       enddo
 !$ACC END PARALLEL LOOP
+#endif
 !$ACC END DATA
       return
       end
@@ -3040,6 +3065,9 @@ c     computes
 c
 c     v = [C (x) B (x) A] u
       subroutine h1mg_tnsr3d_acc(v,nv,u,nu,A,Bt,Ct)
+#ifdef _CUDA
+      use cudafor
+#endif
       integer nv,nu
       real v(nv*nv,nv,nelt),u(nu,nu*nu,nelt)
       real A(nv,nu),Bt(nu,nv),Ct(nu,nv)
@@ -3047,7 +3075,31 @@ c     v = [C (x) B (x) A] u
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
       common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
       integer ie, i
+      integer cuda_err
 !$ACC DATA PRESENT(work,work2,A,Bt,Ct,u,v)
+#ifdef _CUDA
+!$ACC HOST_DATA USE_DEVICE(v,u,A,Bt,Ct)
+      call h1mg_tnsr3d_cuda(v,nv, u,nu,
+     $     A,Bt,Ct,nelt)
+!$ACC END HOST_DATA
+
+      cuda_err = cudaGetLastError()
+      if (cuda_err /= cudaSuccess) then
+        write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+        call exitt
+      endif
+
+      istat = cudaDeviceSynchronize()
+
+      cuda_err = cudaGetLastError()
+      if (cuda_err /= cudaSuccess) then
+        write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+        call exitt
+      endif
+
+  815    format('CUDA ERROR', I3, ': ', A)
+
+#else
 !$ACC PARALLEL LOOP PRIVATE(work,work2)
       do ie=1,nelt
          !call mxm(A,nv,u(1,1,ie),nu,work,nu*nu)
@@ -3088,6 +3140,7 @@ c     v = [C (x) B (x) A] u
          enddo
       enddo
 !$ACC END PARALLEL LOOP
+#endif
 !$ACC END DATA
       return
       end

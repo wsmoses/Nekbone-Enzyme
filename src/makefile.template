@@ -54,7 +54,7 @@ MXM=mxm_std.o blas.o
 # CUDA
 BONE += ax_cuda.o 
 BONE += ax_cuda2.o
-
+BONE += hsmg_cuda.o
 # JL Routines ###################################################################
 JO  = jl_
 JL := -DPREFIX=jl_
@@ -172,3 +172,4 @@ $(OBJDIR)/ax_acc.o  :$S/ax_acc.f;   $(F77) -c $(FL3) $< -o $@
 # CUDA ############################################################################################
 $(OBJDIR)/ax_cuda.o   :$S/ax_cuda.f;  $(F77) -c $(FL3) $< -o $@
 $(OBJDIR)/ax_cuda2.o  :$S/ax_cuda2.cu; nvcc -c  $< -o $@
+$(OBJDIR)/hsmg_cuda.o  :$S/hsmg_cuda.cu; nvcc -c  $< -o $@
