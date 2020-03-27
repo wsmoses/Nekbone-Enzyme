@@ -982,7 +982,7 @@ c     Assumes that preprocessing has been completed via h1mg_setup()
       l     = mg_h1_lmax
       n     = mg_h1_n(l,mg_fld)
       is    = 1                                       ! solve index
-   !Schwarz
+      !Schwarz
       call h1mg_schwarz(z,rhs,sigma,l)                ! z := sigma W M       rhs
       call copy(r,rhs,n)                              ! r  := rhs
 
@@ -2970,14 +2970,41 @@ c
       end
 c-----------------------------------------------------------------------
       subroutine h1mg_tnsr1_3d_acc(v,nv,nu,A,Bt,Ct) ! v = [C (x) B (x) A] u
+#ifdef _CUDA
+      use cudafor
+#endif
       integer nv,nu
       include 'SIZE'
       real v(nu*nu*nu*nelt),A(nv,nu),Bt(nu,nv)
       real Ct(nu,nv)
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
       common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
-      integer e,e0,ee,es
+      integer e,e0,ee,es,cuda_err
 !$ACC DATA PRESENT(work,work2,A,Bt,Ct,v)
+!#ifdef _CUDA
+!!$ACC HOST_DATA USE_DEVICE(v,A,Bt,Ct)
+!      call h1mg_tnsr3d_cuda(v,nv, v,nu,
+!     $     A,Bt,Ct,nelt)
+!!$ACC END HOST_DATA
+!
+!      cuda_err = cudaGetLastError()
+!      if (cuda_err /= cudaSuccess) then
+!        write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+!        call exitt
+!      endif
+!
+!      istat = cudaDeviceSynchronize()
+!
+!      cuda_err = cudaGetLastError()
+!      if (cuda_err /= cudaSuccess) then
+!        write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+!        call exitt
+!      endif
+!
+!  815    format('CUDA ERROR', I3, ': ', A)
+!
+!#else
+
       e0=1
       es=1
       ee=nelt
@@ -3035,6 +3062,7 @@ c-----------------------------------------------------------------------
          enddo
       enddo
 !$ACC END PARALLEL LOOP
+!#endif
 !$ACC END DATA
       return
       end
