@@ -268,9 +268,17 @@ __global__ void ax_cuda2_kernel(double* __restrict__ w, const double* __restrict
         w[ij + k*LX1*LY1 + ele] = rw[k]; 
       }
 }
-
 extern "C" {
-  void ax_cuda2_(double* __restrict__ w, const double* __restrict__ u, const double* __restrict__ gxyz, const double* __restrict__ dxm1, const double* __restrict__ dxtm1, const int *nel){
+  void ax_cuda2_(double* __restrict__ w, const double* __restrict__ u, const double* __restrict__ gxyz,
+ const double* __restrict__ dxm1, const double* __restrict__ dxtm1, const int *nel){
     ax_cuda2_kernel<<<*nel,dim3(LX1,LY1,1)>>>(w, u, gxyz, dxm1, dxtm1);
 }
+  void bandwidth_test_(void*  w, void * u, void* gxyz,
+ void* dxm1, void* dxtm1, const int *nel){
+    int n = *nel*LX1*LX1*LX1;
+    cudaMemcpy(u,w,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(gxyz,gxyz,6*n*sizeof(double),cudaMemcpyDeviceToDevice);
+    //cudaMemcpy(dxm1,dxtm1,LX1*LX1*LX1*sizeof(double),cudaMemcpyDeviceToDevice);
 }
+}
+
