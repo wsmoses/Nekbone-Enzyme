@@ -291,28 +291,28 @@ extern "C" {
     
     cudaMemcpy(z,z,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(c,c,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(z,z,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(z,z,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(gxyz,gxyz,6*n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(w,w,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(w,w,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(c,c,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(x,x,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(x,x,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(w,w,n*sizeof(double),cudaMemcpyDeviceToDevice);
-    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(c,c,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(x,x,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(w,w,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(p,p,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(x,x,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(w,w,n*sizeof(double),cudaMemcpyDeviceToDevice);
+    cudaMemcpy(c,c,n*sizeof(double),cudaMemcpyDeviceToDevice);
     cudaMemcpy(r,r,n*sizeof(double),cudaMemcpyDeviceToDevice);
 }
 }
