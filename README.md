@@ -49,6 +49,10 @@ $ ./makenek.acc
 The clean step is necessary if you are switching between MPI, OpenACC, and
 OpenACC/CUDA builds.  
 
+### Martin changes!
+The main changes are that Gongs version of the cuda kernels are deprecated. Instead my cuda fortran and cuda c versions are in the files ax_cuda2.cu and ax_cuf.f. To compile the code with the cuda c versions a compatiable version of nvcc is necesssary. To change between different versions the easiset way is to rename the subroutine names and recompiling. The hsmg fileis proted with OpenACC, but this was not covered in the MscThesis since it had aldready been done in Nek5000.
+//Martin Karp 5th May 2020
+
 ### Running nek\_gpu1
 
 Successful compilation will produce an executable called `nekbone`.  You may
