@@ -9,7 +9,7 @@ Nek5000.
 
 
 ### Martin changes!
-The main changes are that Gongs version of the cuda kernels are deprecated. Instead my cuda fortran and cuda c versions are in the files ax_cuda2.cu and ax_cuda.f. To compile the code with the cuda c versions a compatiable version of nvcc is necesssary. To change between different versions the easiset way is to rename the subroutine names and recompiling. The hsmg fileis proted with OpenACC, but this was not covered in the MscThesis since it had aldready been done in Nek5000.
+The main changes are that Gongs version of the cuda kernels are deprecated. Instead my cuda fortran and cuda c versions are in the files ax_cuda2.cu and ax_cuda.f. To compile the code with the cuda c versions a compatiable version of nvcc is necesssary. To change between different versions the easiset way is to rename the subroutine names and recompiling. The hsmg file is ported with OpenACC, so it should be possible to run the whole script on GPU. The port of the preconditioner though was not covered in the MscThesis since it had aldready been done in Nek5000.
 //Martin Karp 5th May 2020
 
 
