@@ -137,7 +137,7 @@
       return
       end
 
-      attributes(global) subroutine ax_cuf2_theirversion(w,u,ur,us,ut,
+      attributes(global) subroutine ax_cuf2_notunrolled(w,u,ur,us,ut,
      &                gxyz,dxm1,dxtm1)
 
       include 'SIZE'
@@ -163,8 +163,8 @@
       real, shared :: shu(lx1,ly1)
       real t_kk(lz1)
       real rut
-      real r_u(lz1)
-      real r_w(lz1)
+      real ru(lz1)
+      real rw(lz1)
       integer l,e,i,j,k,kk,n
 
       e = blockIdx%x
@@ -172,8 +172,8 @@
       j = threadIdx%y
       i = threadIdx%x
       do kk = 1, lz1
-         r_u(kk) = u(i,j,kk,e)
-         r_w(kk) = 0. 
+         ru(kk) = u(i,j,kk,e)
+         rw(kk) = 0. 
       enddo
       shdxm1(i,j) = dxm1(i,j)
       call syncthreads()
@@ -186,9 +186,9 @@
           G12 =gxyz(i,j,kk,5,e)
           G22 = gxyz(i,j,kk,6,e)
           ttmp = 0.0
-          shu(i,j) = r_u(kk)
+          shu(i,j) = ru(kk)
           do l = 1, lx1
-            ttmp = ttmp + shdxm1(kk,l) * r_u(l)
+            ttmp = ttmp + shdxm1(kk,l) * ru(l)
           enddo
           rtmp = 0.0
           stmp = 0.0
@@ -209,15 +209,15 @@
           wijke = 0.0
           call syncthreads()
           do l = 1, lx1
-             r_w(l)= r_w(l) + shdxm1(kk,l)*rut
+             rw(l)= rw(l) + shdxm1(kk,l)*rut
              wijke = wijke + shdxm1(l,i)  * shur(l,j) 
      $                    + shdxm1(l,j)  * shus(i,l)
           enddo
-          r_w(kk)  = r_w(kk)  + wijke
+          rw(kk)  = rw(kk)  + wijke
       enddo
       
       do kk = 1,lz1
-         w(i,j,kk,e) = r_w(kk)
+         w(i,j,kk,e) = rw(kk)
       enddo
       return
       end
@@ -248,8 +248,8 @@
       real, shared :: shu(lx1,ly1)
       real t_kk(lz1)
       real rut
-      real r_u(lz1)
-      real r_w(lz1)
+      real ru(lz1)
+      real rw(lz1)
       integer l,e,i,j,k,kk,n,k2
 
       e = blockIdx%x
@@ -257,8 +257,8 @@
       j = threadIdx%y
       i = threadIdx%x
       do kk = 1, lz1
-         r_u(kk) = u(i,j,kk,e)
-         r_w(kk) = 0. 
+         ru(kk) = u(i,j,kk,e)
+         rw(kk) = 0. 
       enddo
       shdxm1(i,j) = dxm1(i,j)
       call syncthreads()
@@ -271,9 +271,9 @@
           G12 =gxyz(i,j,kk,5,e)
           G22 = gxyz(i,j,kk,6,e)
           ttmp = 0.0
-          shu(i,j) = r_u(kk)
+          shu(i,j) = ru(kk)
           do l = 1, lx1
-            ttmp = ttmp + shdxm1(kk,l) * r_u(l)
+            ttmp = ttmp + shdxm1(kk,l) * ru(l)
           enddo
           rtmp = 0.0
           stmp = 0.0
@@ -294,11 +294,11 @@
           wijke = 0.0
           call syncthreads()
           do l = 1, lx1
-             r_w(l)= r_w(l) + shdxm1(kk,l)*rut
+             rw(l)= rw(l) + shdxm1(kk,l)*rut
              wijke = wijke + shdxm1(l,i)  * shur(l,j) 
      $                    + shdxm1(l,j)  * shus(i,l)
           enddo
-          r_w(kk)  = r_w(kk)  + wijke
+          rw(kk)  = rw(kk)  + wijke
           k2 = kk + 1
           G00 = gxyz(i,j,k2,1,e)
           G01 = gxyz(i,j,k2,2,e)
@@ -307,9 +307,9 @@
           G12 =gxyz(i,j,k2,5,e)
           G22 = gxyz(i,j,k2,6,e)
           ttmp = 0.0
-          shu(i,j) = r_u(k2)
+          shu(i,j) = ru(k2)
           do l = 1, lx1
-            ttmp = ttmp + shdxm1(k2,l) * r_u(l)
+            ttmp = ttmp + shdxm1(k2,l) * ru(l)
           enddo
           rtmp = 0.0
           stmp = 0.0
@@ -330,15 +330,15 @@
           wijke = 0.0
           call syncthreads()
           do l = 1, lx1
-             r_w(l)= r_w(l) + shdxm1(k2,l)*rut
+             rw(l)= rw(l) + shdxm1(k2,l)*rut
              wijke = wijke + shdxm1(l,i)  * shur(l,j) 
      $                    + shdxm1(l,j)  * shus(i,l)
           enddo
-          r_w(k2)  = r_w(k2)  + wijke
+          rw(k2)  = rw(k2)  + wijke
       enddo
       
       do kk = 1,lz1
-         w(i,j,kk,e) = r_w(kk)
+         w(i,j,kk,e) = rw(kk)
       enddo
       return
       end
@@ -377,8 +377,8 @@
       real, shared :: shus_2(lx1,ly1)
       real, shared :: shur_2(lx1,ly1)
       real, shared ::  shu_2(lx1,ly1)
-      real r_u(lz1)
-      real r_w(lz1)
+      real ru(lz1)
+      real rw(lz1)
       integer l,e,i,j,k,kk,n,k2
 
       e = blockIdx%x
@@ -386,8 +386,8 @@
       j = threadIdx%y
       i = threadIdx%x
       do kk = 1, lz1
-         r_u(kk) = u(i,j,kk,e)
-         r_w(kk) = 0. 
+         ru(kk) = u(i,j,kk,e)
+         rw(kk) = 0. 
       enddo
       shdxm1(i,j) = dxm1(i,j)
       call syncthreads()
@@ -410,11 +410,11 @@
           ttmp = 0.0
           ttmp_2 = 0.0
           do l = 1, lx1
-            ttmp = ttmp + shdxm1(kk,l) * r_u(l)
-            ttmp_2 = ttmp_2 + shdxm1(k2,l) * r_u(l)
+            ttmp = ttmp + shdxm1(kk,l) * ru(l)
+            ttmp_2 = ttmp_2 + shdxm1(k2,l) * ru(l)
           enddo
-          shu(i,j) = r_u(kk)
-          shu_2(i,j) = r_u(k2)
+          shu(i,j) = ru(kk)
+          shu_2(i,j) = ru(k2)
           call syncthreads()
           rtmp = 0.0
           stmp = 0.0
@@ -449,18 +449,18 @@
           wijke_2 = 0.0
           call syncthreads()
           do l = 1, lx1
-             r_w(l)= r_w(l) + shdxm1(kk,l)*rut + shdxm1(k2,l)*rut_2
+             rw(l)= rw(l) + shdxm1(kk,l)*rut + shdxm1(k2,l)*rut_2
              wijke = wijke + shdxm1(l,i)  * shur(l,j) 
      $                    + shdxm1(l,j)  * shus(i,l)
              wijke_2 = wijke_2 + shdxm1(l,i)  * shur_2(l,j) 
      $                    + shdxm1(l,j)  * shus_2(i,l)
           enddo
-          r_w(kk)  = r_w(kk)  + wijke
-          r_w(k2)  = r_w(k2)  + wijke_2
+          rw(kk)  = rw(kk)  + wijke
+          rw(k2)  = rw(k2)  + wijke_2
       enddo
       
       do kk = 1,lz1
-         w(i,j,kk,e) = r_w(kk)
+         w(i,j,kk,e) = rw(kk)
       enddo
       return
       end
