@@ -7,6 +7,12 @@ geometry. It exposes the principal computational kernel to reveal the essential
 elements of the algorithmic- architectural coupling that is pertinent to
 Nek5000.
 
+
+### Martin changes!
+The main changes are that Gongs version of the cuda kernels are deprecated. Instead my cuda fortran and cuda c versions are in the files ax_cuda2.cu and ax_cuda.f. To compile the code with the cuda c versions a compatiable version of nvcc is necesssary. To change between different versions the easiset way is to rename the subroutine names and recompiling. The hsmg file is ported with OpenACC, so it should be possible to run the whole script on GPU. The port of the preconditioner though was not covered in the MscThesis since it had aldready been done in Nek5000. Right now everything except the pure OpenACC version assumes lx1 =10.
+//Martin Karp 5th May 2020
+
+
 CUDA/OpenACC Branch
 -------------------
 
