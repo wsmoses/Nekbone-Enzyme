@@ -2744,7 +2744,7 @@ c     clobbers r
       nu = nl
       nv = nl
       nn=nl**ndim
-!$ACC DATA PRESENT(r,d,e,s,work,work2)
+!$ACC DATA PRESENT(r,d,e,s)
 #ifdef _CUDA
 !$ACC HOST_DATA USE_DEVICE(e,r,s,d)
       call h1mg_do_fast_cuda(e,r,s,d,nl,nelt)
@@ -2980,7 +2980,7 @@ c-----------------------------------------------------------------------
       parameter (lwk=(lx1+2)*(ly1+2)*(lz1+2))
       common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
       integer e,e0,ee,es,cuda_err
-!$ACC DATA PRESENT(work,work2,A,Bt,Ct,v)
+!$ACC DATA PRESENT(A,Bt,Ct,v)
 !#ifdef _CUDA
 !!$ACC HOST_DATA USE_DEVICE(v,A,Bt,Ct)
 !      call h1mg_tnsr3d_cuda(v,nv, v,nu,
@@ -3104,7 +3104,7 @@ c     v = [C (x) B (x) A] u
       common /hsmgw/ work(0:lwk-1),work2(0:lwk-1)
       integer ie, i
       integer cuda_err
-!$ACC DATA PRESENT(work,work2,A,Bt,Ct,u,v)
+!$ACC DATA PRESENT(A,Bt,Ct,u,v)
 #ifdef _CUDA
 !$ACC HOST_DATA USE_DEVICE(v,u,A,Bt,Ct)
       call h1mg_tnsr3d_cuda(v,nv, u,nu,

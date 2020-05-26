@@ -30,10 +30,10 @@ IFMPI="true"
 #USR="foo.o"
 
 # linking flags
-USR_LFLAGS="-Mcuda=cc50,cc60 -ta=nvidia:cc50,cc60"
+USR_LFLAGS="-Mcuda=cc35,cc70 -ta=nvidia:cc35,cc70 -pgc++libs -lcudart -lcuda"
 
 # generic compiler flags
-G="-acc -Minfo=accel -Mcuda=cc50,cc60 -ta=nvidia:cc50,cc60"
+G="-acc -Minfo=accel -Mcuda=cc35,cc70 -ta=nvidia:cc35,cc70"
 
 # optimization flags
 #OPT_FLAGS_STD=""
