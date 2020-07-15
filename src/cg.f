@@ -518,9 +518,9 @@ c ifndef _CUDA
 c endif _CUDA
 
 #ifdef GPUDIRECT
-!      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
+      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
 #else
-!      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
+      call dssum(w)         ! Gather-scatter operation  ! w   = QQ  w
 #endif
 
       call add2s2_acc(w,u,.1,n)   !2n
@@ -594,46 +594,46 @@ c     set machine tolerances
       miter = niter
 c     call tester(z,r,n)
       do iter=1,miter
-!         call solveM_acc(z,r,n)    ! preconditioner here
+         call solveM_acc(z,r,n)    ! preconditioner here
          rtz2=rtz1                                                       ! OPS
-!         rtz1=glsc3_acc(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
+         rtz1=glsc3_acc(r,c,z,n)   ! parallel weighted inner product r^T C z ! 3n
 
-!$ACC HOST_DATA USE_DEVICE(w,x,p,z,c,r,g,cmask)
-        call bandwidth_test2(w,x,p,z,c,r,cmask,g,nelt)
-        nxyz=nx1*ny1*nz1
-        flop_cg = flop_cg + (19*nxyz+12*nx1*nxyz)*nelt
-!$ACC END HOST_DATA
-
-         cuda_err = cudaGetLastError()
-         if (cuda_err /= cudaSuccess) then
-           write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
-           call exitt
-         endif
-
-         istat = cudaDeviceSynchronize()
-
-         cuda_err = cudaGetLastError()
-         if (cuda_err /= cudaSuccess) then
-           write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
-           call exitt
-         endif
-
-  815      format('CUDA ERROR', I3, ': ', A)
-
+!!$ACC HOST_DATA USE_DEVICE(w,x,p,z,c,r,g,cmask)
+!        call bandwidth_test2(w,x,p,z,c,r,cmask,g,nelt)
+!        nxyz=nx1*ny1*nz1
+!        flop_cg = flop_cg + (19*nxyz+12*nx1*nxyz)*nelt
+!!$ACC END HOST_DATA
+!
+!         cuda_err = cudaGetLastError()
+!         if (cuda_err /= cudaSuccess) then
+!           write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+!           call exitt
+!         endif
+!
+!         istat = cudaDeviceSynchronize()
+!
+!         cuda_err = cudaGetLastError()
+!         if (cuda_err /= cudaSuccess) then
+!           write(6, 815) cuda_err, cudaGetErrorString(cuda_err)
+!           call exitt
+!         endif
+!
+!  815      format('CUDA ERROR', I3, ': ', A)
+!
 
          beta = rtz1/rtz2
          if (iter.eq.1) beta=0.0
-!         call add2s1_acc(p,z,beta,n)                                     ! 2n
+         call add2s1_acc(p,z,beta,n)                                     ! 2n
 
-!         call ax_acc(w,p,g,ur,us,ut,wk,n)                                ! flopa
+         call ax_acc(w,p,g,ur,us,ut,wk,n)                                ! flopa
 
          pap=glsc3_acc(w,c,p,n)                                          ! 3n
 
          alpha=rtz1/pap
          alphm=-alpha
-!         call add2s2_acc(x,p,alpha,n)                                    ! 2n
-!         call add2s2_acc(r,w,alphm,n)                                    ! 2n
-!         rtr = glsc3_acc(r,c,r,n)                                        ! 3n
+         call add2s2_acc(x,p,alpha,n)                                    ! 2n
+         call add2s2_acc(r,w,alphm,n)                                    ! 2n
+         rtr = glsc3_acc(r,c,r,n)                                        ! 3n
 
          if (iter.eq.1) rlim2 = rtr*eps**2
          if (iter.eq.1) rtr0  = rtr
