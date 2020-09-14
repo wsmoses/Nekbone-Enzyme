@@ -227,7 +227,6 @@ __global__ void ax_cuda2_kernel(double* __restrict__ w, const double* __restrict
         G11 = gxyz[ijk+3*LX1*LY1*LZ1+ele*6];
         G12 = gxyz[ijk+4*LX1*LY1*LZ1+ele*6];
         G22 = gxyz[ijk+5*LX1*LY1*LZ1+ele*6];
-        __syncthreads(); 
         ttmp = 0.0;
         shu[ij] = ru[k];
         for (l = 0; l<LX1; l++){
