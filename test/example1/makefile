@@ -1,20 +1,20 @@
-### makefile automatically created by makenek 01/20/2020 13:08:44 ###
+### makefile automatically created by makenek 03/12/2021 20:45:17 ###
 BINNAME=nekbone
-CASENAME:=
-CASEDIR:=/home/martinkarp/Nekbone/test/example1
-S:=/home/martinkarp/Nekbone/src
+CASENAME:=data
+CASEDIR:=/mnt/pci4/wmdata/Enzyme/enzyme/sc/Nekbone/test/example1
+S:=/mnt/pci4/wmdata/Enzyme/enzyme/sc/Nekbone/src
 J:=$S/jl
 OPT_INCDIR:=./
 OBJDIR=obj
-IFMPI:=true
+IFMPI:=false
 IFNEKCOMM:=
 IFNEKDLAY:=
 IFMGRID:=
-F77:=mpif90
-CC:=mpicc
+F77:=gfortran
+CC:=/mnt/sabrent/wmoses/llvm13/buildallfast/bin/clang
 P:=-fdefault-real-8 -x f77-cpp-input -fdefault-double-8
 PPPO=
-PPS= PTRSIZE8 MPI LONGINT8 UNDERSCORE GLOBAL_LONG_LONG
+PPS= PTRSIZE8 LONGINT8 UNDERSCORE GLOBAL_LONG_LONG
 G:=
 OPT_FLAGS_STD=
 USR:=
@@ -54,7 +54,8 @@ MXM=mxm_std.o blas.o
 ################################################################################
 # CUDA
 BONE += ax_cuda.o 
-
+BONE += ax_cuda2.o
+BONE += hsmg_cuda.o
 # JL Routines ###################################################################
 JO  = jl_
 JL := -DPREFIX=jl_
@@ -89,16 +90,16 @@ L2=$(G) -O2
 L3=$(G) -O3
 L4=$(L3)
 
-FL0   = $(L0) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
-FL2i4 = $(L0)      $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
-FL2   = $(L2) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
-FL3   = $(L3) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
-FL4   = $(L4) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR)
+FL0   = $(L0) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR) -fPIC -D_OPENACC
+FL2i4 = $(L0)      $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR) -fPIC -D_OPENACC
+FL2   = $(L2) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR) -fPIC -D_OPENACC
+FL3   = $(L3) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR) -fPIC -D_OPENACC
+FL4   = $(L4) $(P) $(PPS_F) -I$(CASEDIR) -I$S -I$(OPT_INCDIR) -fPIC -D_OPENACC
 
-cFL0   = $(L0) $(PPS_C) 
-cFL2   = $(L2) $(PPS_C) 
-cFL3   = $(L3) $(PPS_C) 
-cFL4   = $(L4) $(PPS_C) 
+cFL0   = $(L0) $(PPS_C)  -fPIC 
+cFL2   = $(L2) $(PPS_C)  -fPIC 
+cFL3   = $(L3) $(PPS_C)  -fPIC 
+cFL4   = $(L4) $(PPS_C)  -fPIC 
 ################################################################################
 all : nekbone
 
@@ -106,7 +107,7 @@ objdir:
 	@mkdir $(OBJDIR) 2>/dev/null; cat /dev/null 
 
 nekbone: 	objdir $(NOBJS0_bone)
-	$(F77) -o ${BINNAME} $G $(NOBJS0_bone) $(lFLAGS)
+	$(F77) -o ${BINNAME} $G $(NOBJS0_bone) $(lFLAGS) "-lcudart_static" "-ldl" "-lrt" -lpthread -lm -L/usr/local/cuda-11.0/lib64
 	@if test -f ${BINNAME}; then \
 	echo "#############################################################"; \
 	echo "#                  Compilation successful!                  #"; \
@@ -171,3 +172,5 @@ $(OBJDIR)/ax_acc.o  :$S/ax_acc.f;   $(F77) -c $(FL3) $< -o $@
 
 # CUDA ############################################################################################
 $(OBJDIR)/ax_cuda.o   :$S/ax_cuda.f;  $(F77) -c $(FL3) $< -o $@
+$(OBJDIR)/ax_cuda2.o  :$S/ax_cuda2.cu; /mnt/sabrent/wmoses/llvm13/buildallfast/bin/clang -O2 -fno-vectorize -fPIC -Rpass=enzyme -fno-experimental-new-pass-manager --cuda-path=/usr/local/cuda-11.0 -L/usr/local/cuda-11.0/lib64 --cuda-gpu-arch=sm_75 -Xclang -load -Xclang /home/wmoses/git/Enzyme/enzyme/build13Fast/Enzyme/ClangEnzyme-13.so -c  $< -o $@
+$(OBJDIR)/hsmg_cuda.o  :$S/hsmg_cuda.cu; /mnt/sabrent/wmoses/llvm13/buildallfast/bin/clang -O2 -fno-vectorize -fPIC -Rpass=enzyme -fno-experimental-new-pass-manager --cuda-path=/usr/local/cuda-11.0 -L/usr/local/cuda-11.0/lib64 --cuda-gpu-arch=sm_75 -Xclang -load -Xclang /home/wmoses/git/Enzyme/enzyme/build13Fast/Enzyme/ClangEnzyme-13.so -c  $< -o $@

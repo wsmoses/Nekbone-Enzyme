@@ -2,7 +2,9 @@
 #define LY1 10
 #define LZ1 10
 #include <stdio.h>
-__global__ void ax_cuda2_kernel_org(double *w, double *u, double *gxyz, double *dxm1, double *dxtm1){
+
+__device__ void dax_cuda2_kernel_org(double *__restrict__ w, double *__restrict__ u, double *__restrict__ gxyz, double *__restrict__ dxm1, double *__restrict__ dxtm1){
+  //printf("real\n");
 /*      real, intent(out) :: w(lx1,ly1,lz1,lelt)
       real u(lx1,ly1,lz1,lelt)
       real ur  (lx1,ly1,lz1,lelt)
@@ -15,9 +17,12 @@ __global__ void ax_cuda2_kernel_org(double *w, double *u, double *gxyz, double *
       real, intent(in) :: dxtm1(lx1,lx1)*/
 
   double rtmp,stmp,ttmp,wijke;
-      __shared__ double shdxm1[LX1*LY1];
-      __shared__ double shdtxm1[LX1*LY1];
-      __shared__ double shu[LX1*LY1*LZ1];
+      //__shared__ double shdxm1[LX1*LY1];
+      #define shdxm1 dxm1
+      #define shdtxm1 dxtm1
+      //__shared__ double shdtxm1[LX1*LY1];
+      //__shared__ double shu[LX1*LY1*LZ1];
+      #define shu u
       __shared__ double shur[LX1*LY1*LZ1];
       __shared__ double shus[LX1*LY1*LZ1];
       __shared__ double shut[LX1*LY1*LZ1];
@@ -54,9 +59,10 @@ __global__ void ax_cuda2_kernel_org(double *w, double *u, double *gxyz, double *
         k = jk/LY1;
         j = jk-k*LY1;
         if (i<LX1 && j<LY1 && k<LZ1){
-	  rtmp = 0.0;
+	        rtmp = 0.0;
           stmp = 0.0;
           ttmp = 0.0;
+          #pragma unroll
           for (l = 0; l<LX1; l++){
             rtmp = rtmp + shdxm1[i+l*LX1] * shu[l+j*LX1+k*LX1*LY1];
             stmp = stmp + shdxm1[j+l*LX1] * shu[i+l*LX1+k*LX1*LY1];
@@ -106,8 +112,25 @@ __global__ void ax_cuda2_kernel_org(double *w, double *u, double *gxyz, double *
       }
 */
 }
+#undef shu
+#undef shdxm1
+#undef shdtxm1
+
+__global__ void ax_cuda2_kernel_org(double *w, double *u, double *gxyz, double *dxm1, double *dxtm1){
+  dax_cuda2_kernel_org(w, u, gxyz, dxm1, dxtm1);
+}
+
+template<typename... Args>
+__device__ void __enzyme_autodiff(void*, Args...);
+
+__global__ void gradient_ax_cuda2_kernel_org(double *w, double *dw, double *u, double *du, double *gxyz, double *dgxyz, double *dxm1, double *ddxm1, double *dxtm1, double *ddxtm1){
+  __enzyme_autodiff((void*)dax_cuda2_kernel_org, w, dw, u, du, gxyz, dgxyz, dxm1, ddxm1, dxtm1, ddxtm1);
+}
+
+#if 0
 // Basic 2d version
 __global__ void ax_cuda2_kernel_2d(double *w, double *u, double *gxyz, double *dxm1, double *dxtm1){
+  printf("imag\n");
 /*      real, intent(out) :: w(lx1,ly1,lz1,lelt)
       real u(lx1,ly1,lz1,lelt)
       real ur  (lx1,ly1,lz1,lelt)
@@ -180,6 +203,7 @@ __global__ void ax_cuda2_kernel_2d(double *w, double *u, double *gxyz, double *d
       }
 }
 __global__ void ax_cuda2_kernel(double* __restrict__ w, const double* __restrict__ u, const double* __restrict__ gxyz, const double* __restrict__ dxm1, const double* __restrict__ dxtm1){
+  printf("comp\n");
 /*      real, intent(out) :: w(lx1,ly1,lz1,lelt)
       real u(lx1,ly1,lz1,lelt)
       real ur  (lx1,ly1,lz1,lelt)
@@ -267,11 +291,21 @@ __global__ void ax_cuda2_kernel(double* __restrict__ w, const double* __restrict
         w[ij + k*LX1*LY1 + ele] = rw[k]; 
       }
 }
+#endif
+
 extern "C" {
-  void ax_cuda2_(double* __restrict__ w, const double* __restrict__ u, const double* __restrict__ gxyz,
- const double* __restrict__ dxm1, const double* __restrict__ dxtm1, const int *nel){
-    ax_cuda2_kernel<<<*nel,dim3(LX1,LY1,1)>>>(w, u, gxyz, dxm1, dxtm1);
-}
+  void ax_cuda2_(double* __restrict__ w, double* __restrict__ u, double* __restrict__ gxyz,
+  double* __restrict__ dxm1, double* __restrict__ dxtm1, int *nel){
+   printf("calling ax_cuda2_\n");
+    //ax_cuda2_kernel<<<*nel,dim3(LX1,LY1,1)>>>(w, u, gxyz, dxm1, dxtm1);
+    double dw[1];
+    double du[1];
+    double dgxyz[1];
+    double ddxm1[1];
+    double ddxtm1[1];
+    gradient_ax_cuda2_kernel_org<<<*nel,dim3(LX1,LY1,1)>>>(w, dw, u, du, gxyz, dgxyz, dxm1, ddxm1, dxtm1, ddxtm1);
+ }
+
   void bandwidth_test_(void*  w, void * u, void* gxyz,
  void* dxm1, void* dxtm1, const int *nel){
     int n = *nel*LX1*LX1*LX1;

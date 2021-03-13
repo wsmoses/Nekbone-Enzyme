@@ -1,4 +1,4 @@
-#ifdef _CUDA
+#ifdef _CUDAFORT
            attributes(global) subroutine ax_cuf2_org(w,u,ur,us,ut,
      &                gxyz,dxm1,dxtm1)
 

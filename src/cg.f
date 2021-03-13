@@ -428,12 +428,15 @@ c-----------------------------------------------------------------------
       !print *, nelt
 !$ACC DATA PRESENT(w,u(:,:,:,:),gxyz,ur,us,ut,wk,dxm1,dxtm1)
 
+      print *, "outside cuda in ax_acc"
 #ifdef _CUDA
 
 !$ACC HOST_DATA USE_DEVICE(w,u(:,:,:,:),ur,us,ut,gxyz,dxm1,dxtm1)
+      print *, "cuda size nx1=", nx1
        if (nx1.le.10) then
 !         call ax_cuf2<<<nelt,dim3(nx1,ny1,1)>>>(w,u,
 !     $                ur,us,ut,gxyz,dxm1,dxtm1)
+         print *, "calling ax_cuda2"
          call ax_cuda2(w, u,
      $     gxyz,dxm1,dxtm1,nelt)
 !         call bandwidth_test(w, u,

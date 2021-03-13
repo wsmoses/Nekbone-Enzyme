@@ -66,7 +66,7 @@ class NekboneTestCase():
     testDir = None
 
     @staticmethod
-    def makeNekbone(mode, cwd=None, f77='pgfortran', cc='pgcc', ifmpi='false', usr_lflags='', g=''):
+    def makeNekbone(mode, cwd=None, f77='gfortran', cc='/mnt/sabrent/wmoses/llvm13/buildallfast/bin/clang', ifmpi='false', usr_lflags='', g=''):
 
         makenek = 'makenek.{0}'.format(mode)
         makeOutFile = 'make.{0}.output'.format(mode)
@@ -85,7 +85,7 @@ class NekboneTestCase():
         with open(makeOutFile, 'w') as makeOut:
             check_call([makenek, 'data', '-nocompile'], cwd=cwd, stdout=makeOut)
             check_call(['make', '-f', 'makefile', 'clean'], cwd=cwd, stdout=makeOut)
-            check_call(['make', '-f', 'makefile'], cwd=cwd, stdout=makeOut)
+            check_call(['make', '-f', 'makefile', 'VERBOSE=1'], cwd=cwd, stdout=makeOut)
 
     @staticmethod
     def runNekboneSerial(mode, cwd=None, reaFile='data'):
@@ -110,7 +110,7 @@ class NekboneTestCase():
     @classmethod
     def setUpClass(cls):
 
-        cls.makeNekbone(mode='serial', cwd=cls.testDir, f77='pgfortran', cc='pgcc', ifmpi='false', usr_lflags='', g='')
+        cls.makeNekbone(mode='serial', cwd=cls.testDir, f77='gfortran', cc='/mnt/sabrent/wmoses/llvm13/buildallfast/bin/clang', ifmpi='false', usr_lflags='', g='')
         cls.runNekboneSerial(mode='serial', cwd=cls.testDir, reaFile='data')
 
     def assertOutputEqual(self, testMode, refMode='serial'):
@@ -132,34 +132,12 @@ class NekboneTestCase():
             ])
             self.assertEqual(testLine, refLine, msg=errMsg)
 
-    def test_AccDevice(self):
-        testMode = 'acc.device'
-
-        self.makeNekbone(mode=testMode, cwd=self.__class__.testDir,
-                         f77='pgfortran', cc='pgcc', ifmpi='false', usr_lflags='-ta=nvidia:cc50',
-                         g='-acc -Minfo=accel -ta=nvidia:cc50')
-
-        self.runNekboneSerial(mode=testMode, cwd=self.__class__.testDir, reaFile='data')
-
-        self.assertOutputEqual(testMode=testMode, refMode='serial')
-
-    def test_AccHost(self):
-        testMode = 'acc.host'
-
-        self.makeNekbone(mode=testMode, cwd=self.__class__.testDir,
-                         f77='pgfortran', cc='pgcc', ifmpi='false', usr_lflags='-ta=host',
-                         g='-acc -Minfo=accel -ta=host')
-
-        self.runNekboneSerial(mode=testMode, cwd=self.__class__.testDir, reaFile='data')
-
-        self.assertOutputEqual(testMode=testMode, refMode='serial')
-
     def test_CudaDevice(self):
         testMode = 'cuda.device'
 
         self.makeNekbone(mode=testMode, cwd=self.__class__.testDir,
-                         f77='pgfortran', cc='pgcc', ifmpi='false', usr_lflags='-Mcuda=cc50 -ta=nvidia:cc50',
-                         g='-acc -Minfo=accel -Mcuda=cc50 -ta=nvidia:cc50')
+                         f77='gfortran', cc='/mnt/sabrent/wmoses/llvm13/buildallfast/bin/clang', ifmpi='false', usr_lflags='',
+                         g='')
 
         self.runNekboneSerial(mode=testMode, cwd=self.__class__.testDir, reaFile='data')
 
